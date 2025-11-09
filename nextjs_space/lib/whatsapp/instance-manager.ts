@@ -65,7 +65,7 @@ export class WhatsAppInstanceManager {
         auth: state,
         printQRInTerminal: false,
         logger: pino({ level: 'silent' }),
-        browser: ['CenterAI Omni', 'Chrome', '120.0.0'],
+        browser: ['DevSphere.ai', 'Chrome', '120.0.0'],
       });
 
       // Event: Atualização de conexão
