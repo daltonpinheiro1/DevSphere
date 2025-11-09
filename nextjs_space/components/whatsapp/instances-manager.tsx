@@ -7,7 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Plus, QrCode, Power, PowerOff, Trash2, RefreshCw } from 'lucide-react';
+import { Plus, QrCode, Power, PowerOff, Trash2, RefreshCw, Settings } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import QRCode from 'qrcode';
 import { toast } from 'sonner';
 
@@ -18,6 +19,10 @@ interface Instance {
   status: string;
   qrCode?: string;
   autoReply: boolean;
+  messagesPerBatch: number;
+  currentMessageCount: number;
+  proxyUrl?: string;
+  lastDnsRotation?: string;
   lastConnectedAt?: string;
   isConnectedNow?: boolean;
 }
@@ -27,8 +32,13 @@ export default function InstancesManager() {
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [newInstanceName, setNewInstanceName] = useState('');
+  const [messagesPerBatch, setMessagesPerBatch] = useState(50);
+  const [proxyUrl, setProxyUrl] = useState('');
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
   const [selectedInstance, setSelectedInstance] = useState<Instance | null>(null);
+  const [configInstance, setConfigInstance] = useState<Instance | null>(null);
+  const [editingConfig, setEditingConfig] = useState(false);
 
   useEffect(() => {
     fetchInstances();
@@ -62,13 +72,20 @@ export default function InstancesManager() {
       const response = await fetch('/api/whatsapp/instances', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newInstanceName }),
+        body: JSON.stringify({ 
+          name: newInstanceName,
+          messagesPerBatch,
+          proxyUrl: proxyUrl || undefined
+        }),
       });
 
       const data = await response.json();
       if (data.success) {
         toast.success('Instância criada com sucesso!');
         setNewInstanceName('');
+        setMessagesPerBatch(50);
+        setProxyUrl('');
+        setShowAdvanced(false);
         fetchInstances();
       } else {
         toast.error(data.error || 'Erro ao criar instância');
@@ -77,6 +94,35 @@ export default function InstancesManager() {
       toast.error('Erro ao criar instância');
     } finally {
       setCreating(false);
+    }
+  };
+
+  const updateInstanceConfig = async () => {
+    if (!configInstance) return;
+
+    setEditingConfig(true);
+    try {
+      const response = await fetch(`/api/whatsapp/instances/${configInstance.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messagesPerBatch: configInstance.messagesPerBatch,
+          proxyUrl: configInstance.proxyUrl || null,
+        }),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        toast.success('Configurações atualizadas!');
+        setConfigInstance(null);
+        fetchInstances();
+      } else {
+        toast.error(data.error || 'Erro ao atualizar');
+      }
+    } catch (error) {
+      toast.error('Erro ao atualizar configurações');
+    } finally {
+      setEditingConfig(false);
     }
   };
 
@@ -179,21 +225,71 @@ export default function InstancesManager() {
           <CardDescription>Crie uma nova instância de WhatsApp para conectar</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex gap-4">
-            <div className="flex-1">
-              <Label htmlFor="instance-name">Nome da Instância</Label>
-              <Input
-                id="instance-name"
-                placeholder="Centermed - Atendimento"
-                value={newInstanceName}
-                onChange={(e) => setNewInstanceName(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && createInstance()}
-              />
+          <div className="space-y-4">
+            <div className="flex gap-4">
+              <div className="flex-1">
+                <Label htmlFor="instance-name">Nome da Instância</Label>
+                <Input
+                  id="instance-name"
+                  placeholder="DevSphere.ai - Atendimento"
+                  value={newInstanceName}
+                  onChange={(e) => setNewInstanceName(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && createInstance()}
+                />
+              </div>
+              <Button onClick={createInstance} disabled={creating} className="self-end">
+                <Plus className="h-4 w-4 mr-2" />
+                {creating ? 'Criando...' : 'Criar'}
+              </Button>
             </div>
-            <Button onClick={createInstance} disabled={creating} className="self-end">
-              <Plus className="h-4 w-4 mr-2" />
-              {creating ? 'Criando...' : 'Criar'}
+
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowAdvanced(!showAdvanced)}
+              className="w-full"
+            >
+              <Settings className="h-4 w-4 mr-2" />
+              {showAdvanced ? 'Ocultar' : 'Mostrar'} Configurações Avançadas
             </Button>
+
+            {showAdvanced && (
+              <div className="space-y-4 border-t pt-4">
+                <div>
+                  <Label htmlFor="messages-per-batch">Mensagens por Lote (antes de rotação)</Label>
+                  <Select
+                    value={messagesPerBatch.toString()}
+                    onValueChange={(value) => setMessagesPerBatch(parseInt(value))}
+                  >
+                    <SelectTrigger id="messages-per-batch">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="10">10 mensagens</SelectItem>
+                      <SelectItem value="20">20 mensagens</SelectItem>
+                      <SelectItem value="50">50 mensagens (padrão)</SelectItem>
+                      <SelectItem value="100">100 mensagens</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Define quantas mensagens enviar antes de rotacionar DNS/IP
+                  </p>
+                </div>
+
+                <div>
+                  <Label htmlFor="proxy-url">URL do Proxy/DNS Dinâmico (Opcional)</Label>
+                  <Input
+                    id="proxy-url"
+                    placeholder="https://proxy.example.com ou deixe vazio"
+                    value={proxyUrl}
+                    onChange={(e) => setProxyUrl(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Configure um proxy ou DNS dinâmico para rotação automática
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -246,6 +342,15 @@ export default function InstancesManager() {
                 ) : null}
 
                 <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setConfigInstance(instance)}
+                  title="Configurações"
+                >
+                  <Settings className="h-4 w-4" />
+                </Button>
+
+                <Button
                   variant="destructive"
                   size="icon"
                   onClick={() => deleteInstance(instance.id)}
@@ -254,13 +359,93 @@ export default function InstancesManager() {
                 </Button>
               </div>
 
-              {instance.autoReply && (
-                <p className="text-xs text-green-600">✓ Resposta automática ativa</p>
-              )}
+              <div className="text-xs space-y-1">
+                {instance.autoReply && (
+                  <p className="text-green-600">✓ Resposta automática ativa</p>
+                )}
+                <p className="text-muted-foreground">
+                  Rate Limit: {instance.currentMessageCount}/{instance.messagesPerBatch} msgs
+                </p>
+                {instance.proxyUrl && (
+                  <p className="text-blue-600">✓ Proxy configurado</p>
+                )}
+              </div>
             </CardContent>
           </Card>
         ))}
       </div>
+
+      {/* Config Dialog */}
+      <Dialog open={!!configInstance} onOpenChange={() => setConfigInstance(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Configurações Avançadas</DialogTitle>
+            <DialogDescription>
+              Configure rate limiting e rotação de DNS para {configInstance?.name}
+            </DialogDescription>
+          </DialogHeader>
+          {configInstance && (
+            <div className="space-y-4">
+              <div>
+                <Label>Mensagens por Lote</Label>
+                <Select
+                  value={configInstance.messagesPerBatch.toString()}
+                  onValueChange={(value) =>
+                    setConfigInstance({
+                      ...configInstance,
+                      messagesPerBatch: parseInt(value),
+                    })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="10">10 mensagens</SelectItem>
+                    <SelectItem value="20">20 mensagens</SelectItem>
+                    <SelectItem value="50">50 mensagens</SelectItem>
+                    <SelectItem value="100">100 mensagens</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Quantidade de mensagens a enviar antes de rotacionar DNS/IP
+                </p>
+              </div>
+
+              <div>
+                <Label>URL do Proxy/DNS Dinâmico</Label>
+                <Input
+                  placeholder="https://proxy.example.com"
+                  value={configInstance.proxyUrl || ''}
+                  onChange={(e) =>
+                    setConfigInstance({
+                      ...configInstance,
+                      proxyUrl: e.target.value,
+                    })
+                  }
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Deixe vazio para não usar proxy
+                </p>
+              </div>
+
+              <div className="bg-muted p-3 rounded-lg text-sm">
+                <p className="font-semibold mb-2">Status Atual:</p>
+                <p>Mensagens enviadas: {configInstance.currentMessageCount}</p>
+                <p>Última rotação: {configInstance.lastDnsRotation || 'Nunca'}</p>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfigInstance(null)}>
+              Cancelar
+            </Button>
+            <Button onClick={updateInstanceConfig} disabled={editingConfig}>
+              {editingConfig ? 'Salvando...' : 'Salvar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* QR Code Dialog */}
       <Dialog open={!!qrCodeUrl} onOpenChange={() => setQrCodeUrl(null)}>

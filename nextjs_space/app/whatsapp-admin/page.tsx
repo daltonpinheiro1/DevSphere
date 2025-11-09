@@ -22,7 +22,7 @@ export default function WhatsAppAdminPage() {
               WhatsApp Business Manager
             </h1>
             <span className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-full text-sm font-semibold shadow-lg">
-              Centermed
+              DevSphere.ai
             </span>
           </div>
           <p className="text-gray-600 mt-2">
@@ -33,14 +33,14 @@ export default function WhatsAppAdminPage() {
         {/* Quick Start Guide */}
         <Card className="mb-8 bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200">
           <CardHeader>
-            <CardTitle className="text-blue-900">🚀 Início Rápido - Centermed</CardTitle>
+            <CardTitle className="text-blue-900">🚀 Início Rápido - DevSphere.ai</CardTitle>
             <CardDescription>Siga estes passos para começar a enviar mensagens</CardDescription>
           </CardHeader>
           <CardContent>
             <ol className="space-y-3 text-sm text-gray-700">
               <li className="flex items-start gap-2">
                 <span className="bg-blue-600 text-white rounded-full w-6 h-6 flex items-center justify-center flex-shrink-0 text-xs font-bold">1</span>
-                <span><strong>Instâncias:</strong> Crie uma nova instância (ex: "Centermed - Atendimento") e conecte via QR Code</span>
+                <span><strong>Instâncias:</strong> Crie uma nova instância (ex: "DevSphere.ai - Atendimento") e conecte via QR Code</span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="bg-blue-600 text-white rounded-full w-6 h-6 flex items-center justify-center flex-shrink-0 text-xs font-bold">2</span>

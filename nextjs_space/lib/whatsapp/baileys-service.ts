@@ -50,7 +50,9 @@ class BaileysService {
   async createInstance(
     name: string,
     companyId?: string,
-    chatbotId?: string
+    chatbotId?: string,
+    messagesPerBatch?: number,
+    proxyUrl?: string
   ): Promise<string> {
     try {
       const instance = await prisma.whatsAppInstance.create({
@@ -60,12 +62,45 @@ class BaileysService {
           chatbotId,
           status: 'disconnected',
           autoReply: true,
+          messagesPerBatch: messagesPerBatch || 50,
+          proxyUrl: proxyUrl || null,
         },
       });
 
       return instance.id;
     } catch (error) {
       console.error('Erro ao criar instância:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Atualiza configurações de uma instância
+   */
+  async updateInstanceConfig(
+    instanceId: string,
+    messagesPerBatch?: number,
+    proxyUrl?: string | null
+  ) {
+    try {
+      const updateData: any = {};
+      
+      if (messagesPerBatch !== undefined) {
+        updateData.messagesPerBatch = messagesPerBatch;
+      }
+      
+      if (proxyUrl !== undefined) {
+        updateData.proxyUrl = proxyUrl;
+      }
+
+      const instance = await prisma.whatsAppInstance.update({
+        where: { id: instanceId },
+        data: updateData,
+      });
+
+      return instance;
+    } catch (error) {
+      console.error('Erro ao atualizar instância:', error);
       throw error;
     }
   }

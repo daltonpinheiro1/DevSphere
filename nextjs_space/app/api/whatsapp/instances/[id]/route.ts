@@ -37,6 +37,38 @@ export async function GET(
 }
 
 /**
+ * PATCH /api/whatsapp/instances/[id]
+ * Atualiza configurações de uma instância
+ */
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const body = await request.json();
+    const { messagesPerBatch, proxyUrl } = body;
+
+    const updated = await baileysService.updateInstanceConfig(
+      params.id,
+      messagesPerBatch,
+      proxyUrl
+    );
+
+    return NextResponse.json({
+      success: true,
+      instance: updated,
+      message: 'Configurações atualizadas com sucesso',
+    });
+  } catch (error) {
+    console.error('Erro ao atualizar instância:', error);
+    return NextResponse.json(
+      { success: false, error: 'Erro ao atualizar configurações' },
+      { status: 500 }
+    );
+  }
+}
+
+/**
  * DELETE /api/whatsapp/instances/[id]
  * Exclui uma instância
  */

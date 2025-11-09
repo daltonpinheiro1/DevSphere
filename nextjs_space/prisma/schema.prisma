@@ -45,6 +45,13 @@ model WhatsAppInstance {
   chatbotId       String?  @map("chatbot_id") // ID do chatbot associado
   companyId       String?  @map("company_id") // ID da empresa dona da instância
   autoReply       Boolean  @default(true) @map("auto_reply") // Responder automaticamente
+  
+  // Configurações de Rate Limiting e DNS Dinâmico
+  messagesPerBatch Int     @default(50) @map("messages_per_batch") // Mensagens antes de rotação (10, 20, 50, 100)
+  currentMessageCount Int  @default(0) @map("current_message_count") // Contador de mensagens enviadas
+  proxyUrl         String? @map("proxy_url") // URL do proxy/DNS dinâmico
+  lastDnsRotation  DateTime? @map("last_dns_rotation") // Última rotação de DNS
+  
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
   lastConnectedAt DateTime? @map("last_connected_at")

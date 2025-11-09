@@ -218,6 +218,20 @@ export class WhatsAppInstanceManager {
         throw new Error('Socket não conectado');
       }
 
+      // Obter configurações da instância para rate limiting
+      const instance = await prisma.whatsAppInstance.findUnique({
+        where: { id: this.instanceId },
+      });
+
+      if (!instance) {
+        throw new Error('Instância não encontrada');
+      }
+
+      // Verificar se precisa rotacionar DNS
+      if (instance.currentMessageCount >= instance.messagesPerBatch) {
+        await this.rotateDNS(instance);
+      }
+
       // Formatar número no padrão do WhatsApp
       const jid = this.formatPhoneNumber(to);
 
@@ -244,11 +258,49 @@ export class WhatsAppInstanceManager {
         },
       });
 
-      console.log(`Mensagem enviada para ${to}`);
+      // Incrementar contador de mensagens
+      await prisma.whatsAppInstance.update({
+        where: { id: this.instanceId },
+        data: {
+          currentMessageCount: {
+            increment: 1,
+          },
+        },
+      });
+
+      console.log(`Mensagem enviada para ${to} (${instance.currentMessageCount + 1}/${instance.messagesPerBatch})`);
       return true;
     } catch (error) {
       console.error(`Erro ao enviar mensagem para ${to}:`, error);
       return false;
+    }
+  }
+
+  /**
+   * Rotaciona DNS/IP - reseta contador e atualiza timestamp
+   */
+  private async rotateDNS(instance: any): Promise<void> {
+    try {
+      console.log(`Rotacionando DNS para instância ${instance.name}...`);
+      
+      // Se houver proxy configurado, pode fazer lógica adicional aqui
+      if (instance.proxyUrl) {
+        // Aqui pode fazer uma chamada para o proxy/DNS dinâmico
+        console.log(`Proxy configurado: ${instance.proxyUrl}`);
+      }
+
+      // Resetar contador e atualizar timestamp
+      await prisma.whatsAppInstance.update({
+        where: { id: this.instanceId },
+        data: {
+          currentMessageCount: 0,
+          lastDnsRotation: new Date(),
+        },
+      });
+
+      console.log(`DNS rotacionado para instância ${instance.name}`);
+    } catch (error) {
+      console.error('Erro ao rotacionar DNS:', error);
     }
   }
 
