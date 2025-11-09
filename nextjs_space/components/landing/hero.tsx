@@ -66,9 +66,8 @@ export function Hero() {
             transition={{ duration: 0.8, delay: 0.6 }}
             className="font-display text-5xl md:text-7xl font-bold text-white leading-tight"
           >
-            <span className="premium-text-gradient">CENTER AI</span>
-            <br />
-            <span className="text-white">OMNI</span>
+            <span className="premium-text-gradient">DevSphere</span>
+            <span className="text-white">.ai</span>
           </motion.h1>
 
           {/* Animated Subtitle */}
