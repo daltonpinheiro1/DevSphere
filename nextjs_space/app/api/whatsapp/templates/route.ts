@@ -1,6 +1,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { downloadFile } from '@/lib/s3';
 
 /**
  * GET /api/whatsapp/templates
@@ -26,9 +27,20 @@ export async function GET(request: NextRequest) {
       },
     });
 
+    // Gerar URLs assinadas para templates com mídia
+    const templatesWithSignedUrls = await Promise.all(
+      templates.map(async (template) => {
+        if (template.mediaUrl) {
+          const signedUrl = await downloadFile(template.mediaUrl);
+          return { ...template, mediaUrl: signedUrl };
+        }
+        return template;
+      })
+    );
+
     return NextResponse.json({
       success: true,
-      templates,
+      templates: templatesWithSignedUrls,
     });
   } catch (error) {
     console.error('Erro ao listar templates:', error);
@@ -46,7 +58,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, content, variables, companyId, createdBy } = body;
+    const { name, content, variables, companyId, createdBy, mediaType, mediaUrl, mediaName } = body;
 
     if (!name || !content) {
       return NextResponse.json(
@@ -65,6 +77,9 @@ export async function POST(request: NextRequest) {
         variables: variables || extractedVariables,
         companyId,
         createdBy,
+        mediaType,
+        mediaUrl,
+        mediaName,
       },
     });
 

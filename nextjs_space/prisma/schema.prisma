@@ -75,6 +75,9 @@ model MessageTemplate {
   name        String
   content     String   @db.Text // Template com variáveis {{nome}}, {{empresa}}, etc
   variables   String[] @default([]) // Lista de variáveis disponíveis
+  mediaType   String?  @map("media_type") // 'image', 'video', 'audio', 'document'
+  mediaUrl    String?  @map("media_url") // URL da mídia armazenada
+  mediaName   String?  @map("media_name") // Nome original do arquivo
   companyId   String?  @map("company_id")
   createdBy   String?  @map("created_by") // ID do usuário criador
   createdAt   DateTime @default(now()) @map("created_at")

@@ -15,6 +15,7 @@ export interface SendMessageOptions {
   to: string; // Número no formato 5531999887766
   message: string;
   delayMs?: number;
+  mediaUrl?: string;
 }
 
 export interface BulkSendOptions {
@@ -23,6 +24,7 @@ export interface BulkSendOptions {
     phoneNumber: string;
     message: string;
     variables?: Record<string, string>;
+    mediaUrl?: string;
   }>;
   intervalMin: number; // segundos
   intervalMax: number; // segundos

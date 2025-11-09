@@ -1,6 +1,7 @@
 
 import { prisma } from '../db';
 import { baileysService } from './baileys-service';
+import { downloadFile } from '../s3';
 
 /**
  * Gerenciador de campanhas de envio em massa
@@ -105,11 +106,18 @@ class CampaignManager {
             break;
           }
 
-          // Enviar mensagem
+          // Gerar URL assinada se houver mídia
+          let mediaUrl = undefined;
+          if (campaign.template?.mediaUrl) {
+            mediaUrl = await downloadFile(campaign.template.mediaUrl);
+          }
+
+          // Enviar mensagem (com mídia se disponível)
           const success = await baileysService.sendMessage({
             instanceId: campaign.instanceId,
             to: campaignMessage.contact.phoneNumber,
             message: campaignMessage.messageContent,
+            mediaUrl: mediaUrl,
           });
 
           if (success) {

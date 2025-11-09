@@ -6,9 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Edit, Trash2 } from 'lucide-react';
+import { Plus, Edit, Trash2, Image as ImageIcon, Upload, X } from 'lucide-react';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
+import Image from 'next/image';
 
 export default function TemplatesManager() {
   const [templates, setTemplates] = useState<any[]>([]);
@@ -17,6 +18,10 @@ export default function TemplatesManager() {
   const [name, setName] = useState('');
   const [content, setContent] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [mediaFile, setMediaFile] = useState<File | null>(null);
+  const [mediaPreview, setMediaPreview] = useState<string | null>(null);
+  const [mediaType, setMediaType] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     fetchTemplates();
@@ -36,6 +41,40 @@ export default function TemplatesManager() {
     }
   };
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validar tipo de arquivo
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      toast.error('Formato não suportado. Use JPG, PNG, GIF ou WEBP');
+      return;
+    }
+
+    // Validar tamanho (máximo 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Arquivo muito grande. Máximo 5MB');
+      return;
+    }
+
+    setMediaFile(file);
+    setMediaType('image');
+
+    // Criar preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setMediaPreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const removeMedia = () => {
+    setMediaFile(null);
+    setMediaPreview(null);
+    setMediaType(null);
+  };
+
   const saveTemplate = async () => {
     if (!name || !content) {
       toast.error('Nome e conteúdo são obrigatórios');
@@ -43,16 +82,47 @@ export default function TemplatesManager() {
     }
 
     try {
+      setUploading(true);
       const url = editingId
         ? `/api/whatsapp/templates/${editingId}`
         : '/api/whatsapp/templates';
       
       const method = editingId ? 'PATCH' : 'POST';
 
+      // Se houver mídia, fazer upload primeiro
+      let mediaUrl = null;
+      let mediaName = null;
+      
+      if (mediaFile) {
+        const formData = new FormData();
+        formData.append('file', mediaFile);
+        
+        const uploadResponse = await fetch('/api/whatsapp/templates/upload', {
+          method: 'POST',
+          body: formData,
+        });
+        
+        const uploadData = await uploadResponse.json();
+        if (uploadData.success) {
+          mediaUrl = uploadData.cloud_storage_path; // Salvar o path do S3
+          mediaName = uploadData.fileName;
+        } else {
+          toast.error('Erro ao fazer upload da imagem');
+          setUploading(false);
+          return;
+        }
+      }
+
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, content }),
+        body: JSON.stringify({ 
+          name, 
+          content,
+          mediaType: mediaType,
+          mediaUrl: mediaUrl,
+          mediaName: mediaName
+        }),
       });
 
       const data = await response.json();
@@ -65,6 +135,8 @@ export default function TemplatesManager() {
       }
     } catch (error) {
       toast.error('Erro ao salvar template');
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -72,6 +144,8 @@ export default function TemplatesManager() {
     setEditingId(template.id);
     setName(template.name);
     setContent(template.content);
+    setMediaType(template.mediaType);
+    setMediaPreview(template.mediaUrl);
     setShowDialog(true);
   };
 
@@ -97,6 +171,9 @@ export default function TemplatesManager() {
     setName('');
     setContent('');
     setEditingId(null);
+    setMediaFile(null);
+    setMediaPreview(null);
+    setMediaType(null);
     setShowDialog(false);
   };
 
@@ -138,6 +215,16 @@ export default function TemplatesManager() {
                     </div>
                   </CardHeader>
                   <CardContent>
+                    {template.mediaUrl && template.mediaType === 'image' && (
+                      <div className="mb-3 relative w-full aspect-video bg-gray-100 rounded-lg overflow-hidden">
+                        <Image
+                          src={template.mediaUrl}
+                          alt={template.name}
+                          fill
+                          className="object-cover"
+                        />
+                      </div>
+                    )}
                     <p className="text-sm text-gray-600 whitespace-pre-wrap">{template.content}</p>
                     {template.variables?.length > 0 && (
                       <div className="mt-3 flex flex-wrap gap-2">
@@ -146,6 +233,12 @@ export default function TemplatesManager() {
                             {`{{${v}}}`}
                           </span>
                         ))}
+                      </div>
+                    )}
+                    {template.mediaType && (
+                      <div className="mt-2 flex items-center gap-2">
+                        <ImageIcon className="h-4 w-4 text-gray-500" />
+                        <span className="text-xs text-gray-500">{template.mediaName || 'Imagem anexada'}</span>
                       </div>
                     )}
                   </CardContent>
@@ -170,13 +263,58 @@ export default function TemplatesManager() {
                 onChange={(e) => setName(e.target.value)}
               />
             </div>
+
+            {/* Upload de Imagem */}
+            <div>
+              <Label>Imagem (Opcional)</Label>
+              {!mediaPreview ? (
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-500 transition-colors">
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                    onChange={handleFileSelect}
+                    className="hidden"
+                    id="media-upload"
+                  />
+                  <label htmlFor="media-upload" className="cursor-pointer">
+                    <Upload className="h-10 w-10 mx-auto mb-2 text-gray-400" />
+                    <p className="text-sm text-gray-600 mb-1">
+                      Clique para selecionar uma imagem
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      JPG, PNG, GIF ou WEBP (Máx. 5MB)
+                    </p>
+                  </label>
+                </div>
+              ) : (
+                <div className="relative border-2 border-gray-300 rounded-lg overflow-hidden">
+                  <div className="relative w-full aspect-video bg-gray-100">
+                    <Image
+                      src={mediaPreview}
+                      alt="Preview"
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
+                  <Button
+                    variant="destructive"
+                    size="icon"
+                    className="absolute top-2 right-2"
+                    onClick={removeMedia}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+            </div>
+
             <div>
               <Label>Mensagem</Label>
               <Textarea
                 placeholder={`Olá! 👋 Bem-vindo à *Centermed*!\n\nSomos uma clínica especializada em cuidados médicos de excelência.\n\nComo posso ajudá-lo hoje?`}
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
-                rows={8}
+                rows={6}
               />
               <p className="text-xs text-gray-500 mt-2">
                 {`Use {{variavel}} para criar variáveis personalizáveis. Ex: Olá {{nome}}, bem-vindo à Centermed!`}
@@ -184,8 +322,12 @@ export default function TemplatesManager() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={resetForm}>Cancelar</Button>
-            <Button onClick={saveTemplate}>Salvar</Button>
+            <Button variant="outline" onClick={resetForm} disabled={uploading}>
+              Cancelar
+            </Button>
+            <Button onClick={saveTemplate} disabled={uploading}>
+              {uploading ? 'Salvando...' : 'Salvar'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

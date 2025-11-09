@@ -51,7 +51,7 @@ export async function PATCH(
 ) {
   try {
     const body = await request.json();
-    const { name, content, variables } = body;
+    const { name, content, variables, mediaType, mediaUrl, mediaName } = body;
 
     const updateData: any = {};
     if (name) updateData.name = name;
@@ -63,6 +63,9 @@ export async function PATCH(
       }
     }
     if (variables) updateData.variables = variables;
+    if (mediaType !== undefined) updateData.mediaType = mediaType;
+    if (mediaUrl !== undefined) updateData.mediaUrl = mediaUrl;
+    if (mediaName !== undefined) updateData.mediaName = mediaName;
 
     const template = await prisma.messageTemplate.update({
       where: { id: params.id },

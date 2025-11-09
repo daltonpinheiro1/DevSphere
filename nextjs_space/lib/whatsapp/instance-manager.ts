@@ -212,7 +212,7 @@ export class WhatsAppInstanceManager {
   /**
    * Envia uma mensagem
    */
-  async sendMessage(to: string, message: string): Promise<boolean> {
+  async sendMessage(to: string, message: string, mediaUrl?: string): Promise<boolean> {
     try {
       if (!this.sock) {
         throw new Error('Socket não conectado');
@@ -221,7 +221,15 @@ export class WhatsAppInstanceManager {
       // Formatar número no padrão do WhatsApp
       const jid = this.formatPhoneNumber(to);
 
-      await this.sock.sendMessage(jid, { text: message });
+      // Se houver mídia, enviar com imagem
+      if (mediaUrl) {
+        await this.sock.sendMessage(jid, { 
+          image: { url: mediaUrl },
+          caption: message 
+        });
+      } else {
+        await this.sock.sendMessage(jid, { text: message });
+      }
 
       // Salvar mensagem enviada no banco
       await prisma.whatsAppMessage.create({
@@ -231,7 +239,7 @@ export class WhatsAppInstanceManager {
           messageId: `sent-${Date.now()}`,
           fromMe: true,
           content: message,
-          messageType: 'text',
+          messageType: mediaUrl ? 'image' : 'text',
           status: 'sent',
         },
       });

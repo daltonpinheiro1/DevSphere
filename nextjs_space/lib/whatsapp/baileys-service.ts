@@ -168,7 +168,7 @@ class BaileysService {
         await this.sleep(options.delayMs);
       }
 
-      return await manager.sendMessage(options.to, options.message);
+      return await manager.sendMessage(options.to, options.message, options.mediaUrl);
     } catch (error) {
       console.error('Erro ao enviar mensagem:', error);
       return false;
@@ -198,7 +198,8 @@ class BaileysService {
           // Enviar mensagem
           const success = await manager.sendMessage(
             contact.phoneNumber,
-            contact.message
+            contact.message,
+            contact.mediaUrl
           );
 
           if (success) {
