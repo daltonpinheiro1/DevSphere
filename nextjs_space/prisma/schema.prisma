@@ -33,3 +33,121 @@ model Message {
 
   @@map("messages")
 }
+
+// WhatsApp Integration Models
+model WhatsAppInstance {
+  id              String   @id @default(cuid())
+  name            String   // Nome identificador da instância
+  phoneNumber     String?  @map("phone_number") // Número conectado (formato: 5531999887766)
+  status          String   @default("disconnected") // disconnected, connecting, connected, error
+  qrCode          String?  @map("qr_code") // QR code para conexão
+  sessionData     String?  @map("session_data") @db.Text // Dados da sessão Baileys (JSON)
+  chatbotId       String?  @map("chatbot_id") // ID do chatbot associado
+  companyId       String?  @map("company_id") // ID da empresa dona da instância
+  autoReply       Boolean  @default(true) @map("auto_reply") // Responder automaticamente
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  lastConnectedAt DateTime? @map("last_connected_at")
+  
+  campaigns       Campaign[]
+  whatsappMessages WhatsAppMessage[]
+  
+  @@map("whatsapp_instances")
+}
+
+model Contact {
+  id              String   @id @default(cuid())
+  phoneNumber     String   @map("phone_number") // Formato brasileiro: 5531999887766
+  name            String?
+  companyId       String?  @map("company_id")
+  metadata        Json?    // Informações adicionais (JSON)
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  
+  campaignMessages CampaignMessage[]
+  
+  @@unique([phoneNumber, companyId])
+  @@map("contacts")
+}
+
+model MessageTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  content     String   @db.Text // Template com variáveis {{nome}}, {{empresa}}, etc
+  variables   String[] @default([]) // Lista de variáveis disponíveis
+  companyId   String?  @map("company_id")
+  createdBy   String?  @map("created_by") // ID do usuário criador
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  campaigns   Campaign[]
+  
+  @@map("message_templates")
+}
+
+model Campaign {
+  id                String   @id @default(cuid())
+  name              String
+  instanceId        String   @map("instance_id")
+  templateId        String?  @map("template_id")
+  status            String   @default("draft") // draft, scheduled, running, paused, completed, cancelled
+  totalContacts     Int      @default(0) @map("total_contacts")
+  sentCount         Int      @default(0) @map("sent_count")
+  failedCount       Int      @default(0) @map("failed_count")
+  
+  // Configurações de envio
+  intervalMin       Int      @default(3) @map("interval_min") // Intervalo mínimo em segundos
+  intervalMax       Int      @default(10) @map("interval_max") // Intervalo máximo em segundos
+  riskLevel         String   @default("medium") // low, medium, high
+  
+  // Agendamento
+  scheduledAt       DateTime? @map("scheduled_at")
+  startedAt         DateTime? @map("started_at")
+  completedAt       DateTime? @map("completed_at")
+  
+  companyId         String?  @map("company_id")
+  createdBy         String?  @map("created_by")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  
+  instance          WhatsAppInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  template          MessageTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  messages          CampaignMessage[]
+  
+  @@map("campaigns")
+}
+
+model CampaignMessage {
+  id              String   @id @default(cuid())
+  campaignId      String   @map("campaign_id")
+  contactId       String   @map("contact_id")
+  messageContent  String   @map("message_content") @db.Text
+  status          String   @default("pending") // pending, sent, failed, delivered, read
+  errorMessage    String?  @map("error_message")
+  sentAt          DateTime? @map("sent_at")
+  deliveredAt     DateTime? @map("delivered_at")
+  readAt          DateTime? @map("read_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+  
+  campaign        Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contact         Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  
+  @@map("campaign_messages")
+}
+
+model WhatsAppMessage {
+  id              String   @id @default(cuid())
+  instanceId      String   @map("instance_id")
+  remoteJid       String   @map("remote_jid") // ID do contato no WhatsApp
+  messageId       String   @map("message_id") // ID da mensagem no WhatsApp
+  fromMe          Boolean  @map("from_me")
+  content         String   @db.Text
+  messageType     String   @default("text") @map("message_type") // text, image, audio, video, document
+  status          String?  // sent, delivered, read
+  timestamp       DateTime @default(now())
+  
+  instance        WhatsAppInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  
+  @@unique([instanceId, messageId])
+  @@map("whatsapp_messages")
+}

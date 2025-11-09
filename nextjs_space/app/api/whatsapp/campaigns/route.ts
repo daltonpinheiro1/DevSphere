@@ -1,0 +1,174 @@
+
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/db';
+
+/**
+ * GET /api/whatsapp/campaigns
+ * Lista todas as campanhas
+ */
+export async function GET(request: NextRequest) {
+  try {
+    const searchParams = request.nextUrl.searchParams;
+    const companyId = searchParams.get('companyId');
+    const status = searchParams.get('status');
+
+    const where: any = {};
+    if (companyId) where.companyId = companyId;
+    if (status) where.status = status;
+
+    const campaigns = await prisma.campaign.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        instance: {
+          select: {
+            id: true,
+            name: true,
+            phoneNumber: true,
+            status: true,
+          },
+        },
+        template: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        _count: {
+          select: { messages: true },
+        },
+      },
+    });
+
+    return NextResponse.json({
+      success: true,
+      campaigns,
+    });
+  } catch (error) {
+    console.error('Erro ao listar campanhas:', error);
+    return NextResponse.json(
+      { success: false, error: 'Erro ao listar campanhas' },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * POST /api/whatsapp/campaigns
+ * Cria uma nova campanha
+ */
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const {
+      name,
+      instanceId,
+      templateId,
+      contacts,
+      intervalMin,
+      intervalMax,
+      riskLevel,
+      scheduledAt,
+      companyId,
+      createdBy,
+    } = body;
+
+    if (!name || !instanceId || !contacts || contacts.length === 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Nome, instância e contatos são obrigatórios',
+        },
+        { status: 400 }
+      );
+    }
+
+    // Buscar template se fornecido
+    let template = null;
+    if (templateId) {
+      template = await prisma.messageTemplate.findUnique({
+        where: { id: templateId },
+      });
+    }
+
+    // Criar campanha
+    const campaign = await prisma.campaign.create({
+      data: {
+        name,
+        instanceId,
+        templateId,
+        status: scheduledAt ? 'scheduled' : 'draft',
+        totalContacts: contacts.length,
+        intervalMin: intervalMin || 3,
+        intervalMax: intervalMax || 10,
+        riskLevel: riskLevel || 'medium',
+        scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
+        companyId,
+        createdBy,
+      },
+    });
+
+    // Criar mensagens da campanha
+    const campaignMessages = [];
+
+    for (const contactData of contacts) {
+      // Buscar ou criar contato
+      const cleanedNumber = contactData.phoneNumber.replace(/\D/g, '');
+      const formattedNumber = cleanedNumber.startsWith('55')
+        ? cleanedNumber
+        : `55${cleanedNumber}`;
+
+      const contact = await prisma.contact.upsert({
+        where: {
+          phoneNumber_companyId: {
+            phoneNumber: formattedNumber,
+            companyId: companyId || null,
+          },
+        },
+        update: {},
+        create: {
+          phoneNumber: formattedNumber,
+          name: contactData.name,
+          companyId,
+        },
+      });
+
+      // Processar mensagem (aplicar variáveis do template)
+      let messageContent = contactData.message;
+
+      if (template && contactData.variables) {
+        messageContent = template.content;
+        for (const [key, value] of Object.entries(contactData.variables)) {
+          messageContent = messageContent.replace(
+            new RegExp(`\\{\\{${key}\\}\\}`, 'g'),
+            value as string
+          );
+        }
+      }
+
+      campaignMessages.push({
+        campaignId: campaign.id,
+        contactId: contact.id,
+        messageContent,
+        status: 'pending',
+      });
+    }
+
+    // Criar todas as mensagens em lote
+    await prisma.campaignMessage.createMany({
+      data: campaignMessages,
+    });
+
+    return NextResponse.json({
+      success: true,
+      campaign,
+      message: 'Campanha criada com sucesso',
+    });
+  } catch (error) {
+    console.error('Erro ao criar campanha:', error);
+    return NextResponse.json(
+      { success: false, error: 'Erro ao criar campanha' },
+      { status: 500 }
+    );
+  }
+}
