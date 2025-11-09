@@ -3,6 +3,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Bot, Menu, X } from 'lucide-react'
 import { motion } from 'framer-motion'
@@ -21,8 +22,13 @@ export function Header() {
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <Link href="/" className="flex items-center space-x-3 group">
-            <div className="premium-gradient p-2 rounded-xl group-hover:scale-110 transition-transform duration-300">
-              <Bot className="h-6 w-6 text-white" />
+            <div className="relative w-10 h-10 group-hover:scale-110 transition-transform duration-300">
+              <Image
+                src="https://cdn.abacus.ai/images/39b61f97-0e0e-4dce-862e-079001e361c2.png"
+                alt="DevSphere.ai - Logo da Plataforma de Automação"
+                fill
+                className="object-contain"
+              />
             </div>
             <div className="font-display">
               <span className="text-xl font-bold premium-text-gradient">

@@ -36,7 +36,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, companyId, chatbotId, messagesPerBatch, proxyUrl } = body;
+    const { name, companyId, companyName, chatbotId, messagesPerBatch, proxyUrl } = body;
 
     if (!name) {
       return NextResponse.json(
@@ -50,7 +50,8 @@ export async function POST(request: NextRequest) {
       companyId,
       chatbotId,
       messagesPerBatch,
-      proxyUrl
+      proxyUrl,
+      companyName
     );
 
     const instance = await baileysService.getInstance(instanceId);

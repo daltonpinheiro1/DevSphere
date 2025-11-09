@@ -2,6 +2,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { Bot } from 'lucide-react'
 
 export function Footer() {
@@ -12,8 +13,13 @@ export function Footer() {
           {/* Brand */}
           <div className="md:col-span-2">
             <Link href="/" className="flex items-center space-x-3 mb-4">
-              <div className="premium-gradient p-2 rounded-xl">
-                <Bot className="h-6 w-6 text-white" />
+              <div className="relative w-10 h-10" aria-hidden="true">
+                <Image
+                  src="https://cdn.abacus.ai/images/39b61f97-0e0e-4dce-862e-079001e361c2.png"
+                  alt=""
+                  fill
+                  className="object-contain"
+                />
               </div>
               <span className="text-xl font-bold premium-text-gradient font-display">
                 DevSphere.ai

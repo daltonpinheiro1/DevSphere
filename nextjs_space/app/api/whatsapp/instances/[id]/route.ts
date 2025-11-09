@@ -46,12 +46,19 @@ export async function PATCH(
 ) {
   try {
     const body = await request.json();
-    const { messagesPerBatch, proxyUrl } = body;
+    const { name, companyName, messagesPerBatch, proxyUrl, autoReply, isActive, status } = body;
 
     const updated = await baileysService.updateInstanceConfig(
       params.id,
-      messagesPerBatch,
-      proxyUrl
+      {
+        name,
+        companyName,
+        messagesPerBatch,
+        proxyUrl,
+        autoReply,
+        isActive,
+        status,
+      }
     );
 
     return NextResponse.json({

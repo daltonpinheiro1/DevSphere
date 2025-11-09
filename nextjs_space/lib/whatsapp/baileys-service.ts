@@ -52,16 +52,19 @@ class BaileysService {
     companyId?: string,
     chatbotId?: string,
     messagesPerBatch?: number,
-    proxyUrl?: string
+    proxyUrl?: string,
+    companyName?: string
   ): Promise<string> {
     try {
       const instance = await prisma.whatsAppInstance.create({
         data: {
           name,
           companyId,
+          companyName,
           chatbotId,
           status: 'disconnected',
           autoReply: true,
+          isActive: true,
           messagesPerBatch: messagesPerBatch || 50,
           proxyUrl: proxyUrl || null,
         },
@@ -79,18 +82,45 @@ class BaileysService {
    */
   async updateInstanceConfig(
     instanceId: string,
-    messagesPerBatch?: number,
-    proxyUrl?: string | null
+    config: {
+      name?: string;
+      companyName?: string;
+      messagesPerBatch?: number;
+      proxyUrl?: string | null;
+      autoReply?: boolean;
+      isActive?: boolean;
+      status?: string;
+    }
   ) {
     try {
       const updateData: any = {};
       
-      if (messagesPerBatch !== undefined) {
-        updateData.messagesPerBatch = messagesPerBatch;
+      if (config.name !== undefined) {
+        updateData.name = config.name;
       }
       
-      if (proxyUrl !== undefined) {
-        updateData.proxyUrl = proxyUrl;
+      if (config.companyName !== undefined) {
+        updateData.companyName = config.companyName;
+      }
+      
+      if (config.messagesPerBatch !== undefined) {
+        updateData.messagesPerBatch = config.messagesPerBatch;
+      }
+      
+      if (config.proxyUrl !== undefined) {
+        updateData.proxyUrl = config.proxyUrl;
+      }
+      
+      if (config.autoReply !== undefined) {
+        updateData.autoReply = config.autoReply;
+      }
+      
+      if (config.isActive !== undefined) {
+        updateData.isActive = config.isActive;
+      }
+      
+      if (config.status !== undefined) {
+        updateData.status = config.status;
       }
 
       const instance = await prisma.whatsAppInstance.update({
