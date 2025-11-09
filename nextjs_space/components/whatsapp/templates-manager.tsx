@@ -165,7 +165,7 @@ export default function TemplatesManager() {
             <div>
               <Label>Nome do Template</Label>
               <Input
-                placeholder="Ex: Boas-vindas Centermed"
+                placeholder="Centermed - Boas-vindas"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />
@@ -173,13 +173,13 @@ export default function TemplatesManager() {
             <div>
               <Label>Mensagem</Label>
               <Textarea
-                placeholder="Olá {{nome}}, bem-vindo à {{empresa}}!"
+                placeholder={`Olá! 👋 Bem-vindo à *Centermed*!\n\nSomos uma clínica especializada em cuidados médicos de excelência.\n\nComo posso ajudá-lo hoje?`}
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
                 rows={8}
               />
               <p className="text-xs text-gray-500 mt-2">
-                {`Use {{variavel}} para criar variáveis personalizáveis`}
+                {`Use {{variavel}} para criar variáveis personalizáveis. Ex: Olá {{nome}}, bem-vindo à Centermed!`}
               </p>
             </div>
           </div>

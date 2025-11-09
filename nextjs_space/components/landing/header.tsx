@@ -32,7 +32,7 @@ export function Header() {
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-8">
+          <nav className="hidden md:flex items-center space-x-6">
             <a href="#features" className="text-gray-300 hover:text-white transition-colors duration-300">
               Recursos
             </a>
@@ -44,12 +44,12 @@ export function Header() {
             </a>
             <Link href="/whatsapp-admin">
               <Button variant="outline" className="border-white/20 text-white hover:bg-white/10">
-                WhatsApp
+                WhatsApp Admin
               </Button>
             </Link>
             <Link href="/chat">
-              <Button className="premium-button">
-                Iniciar Chat
+              <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg">
+                Chat Centermed
               </Button>
             </Link>
           </nav>
@@ -87,8 +87,8 @@ export function Header() {
                 </Button>
               </Link>
               <Link href="/chat">
-                <Button className="premium-button w-full">
-                  Iniciar Chat
+                <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg w-full">
+                  Chat Centermed
                 </Button>
               </Link>
             </div>

@@ -238,7 +238,7 @@ export default function CampaignsManager() {
           <div className="space-y-4 max-h-[60vh] overflow-y-auto">
             <div>
               <Label>Nome da Campanha</Label>
-              <Input placeholder="Ex: Promoção Janeiro" value={name} onChange={(e) => setName(e.target.value)} />
+              <Input placeholder="Centermed - Novembro 2025" value={name} onChange={(e) => setName(e.target.value)} />
             </div>
             
             <div>

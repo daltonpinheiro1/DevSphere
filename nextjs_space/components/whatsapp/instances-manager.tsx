@@ -184,7 +184,7 @@ export default function InstancesManager() {
               <Label htmlFor="instance-name">Nome da Instância</Label>
               <Input
                 id="instance-name"
-                placeholder="Ex: Atendimento Centermed"
+                placeholder="Centermed - Atendimento"
                 value={newInstanceName}
                 onChange={(e) => setNewInstanceName(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && createInstance()}
