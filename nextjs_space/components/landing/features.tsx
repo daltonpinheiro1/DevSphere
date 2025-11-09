@@ -48,7 +48,7 @@ export function Features() {
             Recursos <span className="premium-text-gradient">Premium</span>
           </h2>
           <p className="text-xl text-gray-400 max-w-3xl mx-auto">
-            Descubra as funcionalidades avançadas que tornam o CENTER AI OMNI a escolha ideal para sua empresa.
+            Descubra as funcionalidades avançadas que tornam a DevSphere.ai a escolha ideal para sua empresa.
           </p>
         </motion.div>
 

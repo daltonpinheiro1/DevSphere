@@ -34,7 +34,7 @@ export function ChatMessages({ messages, isLoading }: ChatMessagesProps) {
             <Bot className="h-10 w-10 text-white" />
           </div>
           <h3 className="font-display text-2xl font-semibold text-white mb-4">
-            Bem-vindo ao <span className="premium-text-gradient">CENTER AI OMNI</span>
+            Bem-vindo ao <span className="premium-text-gradient">DevSphere.ai</span>
           </h3>
           <p className="text-gray-400 leading-relaxed">
             Sou sua assistente de IA empresarial. Posso ajudar com consultas, análises, suporte e muito mais. Como posso ajudá-lo hoje?

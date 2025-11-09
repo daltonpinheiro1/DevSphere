@@ -16,11 +16,11 @@ export function Footer() {
                 <Bot className="h-6 w-6 text-white" />
               </div>
               <span className="text-xl font-bold premium-text-gradient font-display">
-                CENTER AI OMNI
+                DevSphere.ai
               </span>
             </Link>
             <p className="text-gray-400 max-w-md leading-relaxed">
-              Sistema avançado de chatbot AI empresarial com histórico persistente, interface premium e integração completa para revolucionar a comunicação da sua organização.
+              Plataforma avançada de automação e comunicação empresarial com IA, WhatsApp Business e chatbots inteligentes para revolucionar a comunicação da sua organização.
             </p>
           </div>
 
@@ -63,7 +63,7 @@ export function Footer() {
         <div className="border-t border-white/10 mt-12 pt-8">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <p className="text-sm text-gray-400">
-              © 2025 CENTER AI OMNI. Sistema de IA empresarial premium.
+              © 2025 DevSphere.ai. Plataforma de automação empresarial com IA.
             </p>
             <p className="text-sm text-gray-400 mt-4 md:mt-0">
               Desenvolvido com ❤️ e tecnologia avançada

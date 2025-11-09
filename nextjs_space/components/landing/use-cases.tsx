@@ -59,7 +59,7 @@ export function UseCases() {
             Casos de <span className="premium-text-gradient">Uso</span>
           </h2>
           <p className="text-xl text-gray-400 max-w-3xl mx-auto">
-            Descubra como o CENTER AI OMNI pode transformar diferentes áreas da sua organização.
+            Descubra como a DevSphere.ai pode transformar diferentes áreas da sua organização.
           </p>
         </motion.div>
 

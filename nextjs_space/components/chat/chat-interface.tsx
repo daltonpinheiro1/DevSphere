@@ -74,7 +74,7 @@ export function ChatInterface() {
       <div className="flex-1 flex flex-col min-w-0">
         {/* Header */}
         <ChatHeader 
-          conversationTitle={currentConversation?.title || 'CENTER AI OMNI'}
+          conversationTitle={currentConversation?.title || 'DevSphere.ai'}
           onMenuToggle={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
         />
 

@@ -20,21 +20,21 @@ const poppins = Poppins({
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXTAUTH_URL || 'http://localhost:3000'),
-  title: 'CENTER AI OMNI - Chatbot IA Empresarial Premium',
-  description: 'Sistema avançado de chatbot AI empresarial com histórico persistente, interface premium e integração completa para sua organização.',
-  keywords: ['chatbot', 'IA', 'AI', 'empresarial', 'premium', 'conversas', 'automação'],
-  authors: [{ name: 'CENTER AI OMNI' }],
+  title: 'DevSphere.ai - Plataforma de Automação e WhatsApp Business',
+  description: 'Plataforma avançada de automação empresarial com IA, WhatsApp Business API, chatbots inteligentes e gestão de campanhas para sua organização.',
+  keywords: ['chatbot', 'IA', 'AI', 'empresarial', 'WhatsApp', 'automação', 'campanhas', 'Baileys'],
+  authors: [{ name: 'DevSphere.ai' }],
   openGraph: {
-    title: 'CENTER AI OMNI - Chatbot IA Empresarial Premium',
-    description: 'Sistema avançado de chatbot AI empresarial com histórico persistente e interface premium.',
+    title: 'DevSphere.ai - Plataforma de Automação e WhatsApp Business',
+    description: 'Plataforma avançada de automação empresarial com IA, WhatsApp Business e chatbots inteligentes.',
     url: '/',
-    siteName: 'CENTER AI OMNI',
+    siteName: 'DevSphere.ai',
     images: [
       {
         url: '/og-image.png',
         width: 1200,
         height: 630,
-        alt: 'CENTER AI OMNI - Chatbot IA Empresarial'
+        alt: 'DevSphere.ai - Plataforma de Automação Empresarial'
       }
     ],
     locale: 'pt-BR',
@@ -42,7 +42,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'CENTER AI OMNI - Chatbot IA Empresarial Premium',
+    title: 'DevSphere.ai - Plataforma de Automação e WhatsApp Business',
     description: 'Sistema avançado de chatbot AI empresarial com histórico persistente e interface premium.',
     images: ['/og-image.png'],
   },

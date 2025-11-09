@@ -258,7 +258,7 @@ export default function TemplatesManager() {
             <div>
               <Label>Nome do Template</Label>
               <Input
-                placeholder="DevSphere.ai - Boas-vindas"
+                placeholder="Centermed - Boas-vindas"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />
@@ -311,13 +311,13 @@ export default function TemplatesManager() {
             <div>
               <Label>Mensagem</Label>
               <Textarea
-                placeholder={`Olá! 👋 Bem-vindo à *DevSphere.ai*!\n\nSomos uma empresa de tecnologia especializada em soluções de IA e automação.\n\nComo posso ajudá-lo hoje?`}
+                placeholder={`Olá! 👋 Bem-vindo à *Centermed*!\n\nSomos uma clínica médica especializada em cuidar da sua saúde.\n\nComo posso ajudá-lo hoje?`}
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
                 rows={6}
               />
               <p className="text-xs text-gray-500 mt-2">
-                {`Use {{variavel}} para criar variáveis personalizáveis. Ex: Olá {{nome}}, bem-vindo à DevSphere.ai!`}
+                {`Use {{variavel}} para criar variáveis personalizáveis. Ex: Olá {{nome}}, bem-vindo à Centermed!`}
               </p>
             </div>
           </div>

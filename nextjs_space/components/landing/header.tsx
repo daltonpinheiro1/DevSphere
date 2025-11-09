@@ -26,7 +26,7 @@ export function Header() {
             </div>
             <div className="font-display">
               <span className="text-xl font-bold premium-text-gradient">
-                CENTER AI OMNI
+                DevSphere.ai
               </span>
             </div>
           </Link>
@@ -49,7 +49,7 @@ export function Header() {
             </Link>
             <Link href="/chat">
               <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg">
-                Chat DevSphere.ai
+                Chat Centermed
               </Button>
             </Link>
           </nav>
@@ -88,7 +88,7 @@ export function Header() {
               </Link>
               <Link href="/chat">
                 <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg w-full">
-                  Chat DevSphere.ai
+                  Chat Centermed
                 </Button>
               </Link>
             </div>
