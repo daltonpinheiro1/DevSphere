@@ -1,814 +1,588 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Plus, QrCode, Power, PowerOff, Trash2, RefreshCw, Settings, Pause, Play, Activity, Building2, MessageSquare, Clock, ChevronDown, ChevronUp } from 'lucide-react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Switch } from '@/components/ui/switch';
-import QRCode from 'qrcode';
 import { toast } from 'sonner';
+import { Loader2, Plus, Power, PowerOff, Trash2, QrCode, Settings, Pause, Play, RefreshCw } from 'lucide-react';
 import Image from 'next/image';
-import { Separator } from '@/components/ui/separator';
 
-interface Instance {
+interface WhatsAppInstance {
   id: string;
   name: string;
+  companyName?: string;
   phoneNumber?: string;
-  status: string;
+  status: 'connected' | 'connecting' | 'disconnected' | 'paused' | 'error';
   qrCode?: string;
+  lastConnected?: Date;
+  messagesPerBatch: number;
+  proxyUrl?: string;
   autoReply: boolean;
   isActive: boolean;
-  companyName?: string;
-  messagesPerBatch: number;
-  currentMessageCount: number;
   totalMessagesSent: number;
-  proxyUrl?: string;
-  lastDnsRotation?: string;
-  lastConnectedAt?: string;
-  isConnectedNow?: boolean;
-  createdAt: string;
-  updatedAt: string;
+  currentMessageCount: number;
 }
 
-export default function InstancesManager() {
-  const [instances, setInstances] = useState<Instance[]>([]);
+export function InstancesManager() {
+  const [instances, setInstances] = useState<WhatsAppInstance[]>([]);
   const [loading, setLoading] = useState(true);
-  const [creating, setCreating] = useState(false);
-  const [newInstanceName, setNewInstanceName] = useState('');
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [qrDialogOpen, setQrDialogOpen] = useState(false);
+  const [configDialogOpen, setConfigDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedInstance, setSelectedInstance] = useState<WhatsAppInstance | null>(null);
+  const [currentQr, setCurrentQr] = useState<string>('');
+
+  // Form states
+  const [name, setName] = useState('');
   const [companyName, setCompanyName] = useState('');
-  const [messagesPerBatch, setMessagesPerBatch] = useState(50);
+  const [messagesPerBatch, setMessagesPerBatch] = useState(20);
   const [proxyUrl, setProxyUrl] = useState('');
-  const [showAdvanced, setShowAdvanced] = useState(false);
-  const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
-  const [selectedInstance, setSelectedInstance] = useState<Instance | null>(null);
-  const [configInstance, setConfigInstance] = useState<Instance | null>(null);
-  const [editingConfig, setEditingConfig] = useState(false);
-  const [expandedInstances, setExpandedInstances] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetchInstances();
-    // Poll para atualizar QR codes e status
-    const interval = setInterval(fetchInstances, 5000);
-    return () => clearInterval(interval);
   }, []);
 
   const fetchInstances = async () => {
     try {
-      const response = await fetch('/api/whatsapp/instances');
-      const data = await response.json();
-      if (data.success) {
-        setInstances(data.instances);
-      }
+      const res = await fetch('/api/whatsapp/instances');
+      const data = await res.json();
+      setInstances(data.instances || []);
     } catch (error) {
-      console.error('Erro ao buscar instâncias:', error);
+      console.error('Erro ao carregar instâncias:', error);
+      toast.error('Erro ao carregar instâncias');
+      setInstances([]);
     } finally {
       setLoading(false);
     }
   };
 
   const createInstance = async () => {
-    if (!newInstanceName.trim()) {
-      toast.error('Por favor, insira um nome para a instância');
+    if (!name.trim()) {
+      toast.error('Nome da instância é obrigatório');
       return;
     }
 
-    setCreating(true);
     try {
-      const response = await fetch('/api/whatsapp/instances', {
+      const res = await fetch('/api/whatsapp/instances', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: newInstanceName,
+          name,
           companyName: companyName || undefined,
           messagesPerBatch,
           proxyUrl: proxyUrl || undefined,
         }),
       });
 
-      const data = await response.json();
-      if (data.success) {
-        toast.success('Instância criada com sucesso!');
-        setNewInstanceName('');
-        setCompanyName('');
-        setProxyUrl('');
-        fetchInstances();
-      } else {
-        toast.error(data.error || 'Erro ao criar instância');
-      }
+      if (!res.ok) throw new Error('Erro ao criar instância');
+
+      toast.success('Instância criada com sucesso!');
+      setCreateDialogOpen(false);
+      resetForm();
+      fetchInstances();
     } catch (error) {
       toast.error('Erro ao criar instância');
-      console.error(error);
-    } finally {
-      setCreating(false);
     }
   };
 
-  const connectInstance = async (instanceId: string) => {
+  const connectInstance = async (id: string) => {
     try {
-      const response = await fetch(`/api/whatsapp/instances/${instanceId}/connect`, {
+      const res = await fetch(`/api/whatsapp/instances/${id}/connect`, {
         method: 'POST',
       });
 
-      const data = await response.json();
-      if (data.success) {
-        toast.success('Conectando... Aguarde o QR Code');
-        fetchInstances();
-      } else {
-        toast.error(data.error || 'Erro ao conectar');
-      }
+      if (!res.ok) throw new Error('Erro ao conectar');
+
+      const data = await res.json();
+      setCurrentQr(data.qrCode);
+      setQrDialogOpen(true);
+      toast.success('QR Code gerado! Escaneie para conectar');
+
+      // Poll para atualizar status
+      const interval = setInterval(async () => {
+        const statusRes = await fetch(`/api/whatsapp/instances/${id}`);
+        const statusData = await statusRes.json();
+        
+        if (statusData.status === 'connected') {
+          clearInterval(interval);
+          setQrDialogOpen(false);
+          toast.success('WhatsApp conectado com sucesso!');
+          fetchInstances();
+        }
+      }, 2000);
+
+      // Limpar após 2 minutos
+      setTimeout(() => clearInterval(interval), 120000);
     } catch (error) {
       toast.error('Erro ao conectar instância');
-      console.error(error);
     }
   };
 
-  const disconnectInstance = async (instanceId: string) => {
+  const disconnectInstance = async (id: string) => {
     try {
-      const response = await fetch(`/api/whatsapp/instances/${instanceId}/disconnect`, {
+      const res = await fetch(`/api/whatsapp/instances/${id}/disconnect`, {
         method: 'POST',
       });
 
-      const data = await response.json();
-      if (data.success) {
-        toast.success('Instância desconectada');
-        fetchInstances();
-      } else {
-        toast.error(data.error || 'Erro ao desconectar');
-      }
+      if (!res.ok) throw new Error('Erro ao desconectar');
+
+      toast.success('Instância desconectada');
+      fetchInstances();
     } catch (error) {
       toast.error('Erro ao desconectar instância');
-      console.error(error);
     }
   };
 
-  const pauseInstance = async (instanceId: string) => {
+  const togglePause = async (instance: WhatsAppInstance) => {
     try {
-      const response = await fetch(`/api/whatsapp/instances/${instanceId}`, {
+      const newStatus = instance.status === 'paused' ? 'connected' : 'paused';
+      
+      const res = await fetch(`/api/whatsapp/instances/${instance.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'paused' }),
+        body: JSON.stringify({ status: newStatus }),
       });
 
-      const data = await response.json();
-      if (data.success) {
-        toast.success('Instância pausada');
-        fetchInstances();
-      } else {
-        toast.error(data.error || 'Erro ao pausar');
-      }
+      if (!res.ok) throw new Error('Erro ao atualizar status');
+
+      toast.success(newStatus === 'paused' ? 'Instância pausada' : 'Instância retomada');
+      fetchInstances();
     } catch (error) {
-      toast.error('Erro ao pausar instância');
-      console.error(error);
+      toast.error('Erro ao atualizar status');
     }
   };
 
-  const resumeInstance = async (instanceId: string) => {
+  const toggleAutoReply = async (instance: WhatsAppInstance) => {
     try {
-      const response = await fetch(`/api/whatsapp/instances/${instanceId}/connect`, {
-        method: 'POST',
-      });
-
-      const data = await response.json();
-      if (data.success) {
-        toast.success('Instância retomada');
-        fetchInstances();
-      } else {
-        toast.error(data.error || 'Erro ao retomar');
-      }
-    } catch (error) {
-      toast.error('Erro ao retomar instância');
-      console.error(error);
-    }
-  };
-
-  const deleteInstance = async (instanceId: string) => {
-    if (!confirm('Tem certeza que deseja excluir esta instância? Todos os dados serão perdidos.')) {
-      return;
-    }
-
-    try {
-      const response = await fetch(`/api/whatsapp/instances/${instanceId}`, {
-        method: 'DELETE',
-      });
-
-      const data = await response.json();
-      if (data.success) {
-        toast.success('Instância excluída');
-        fetchInstances();
-      } else {
-        toast.error(data.error || 'Erro ao excluir');
-      }
-    } catch (error) {
-      toast.error('Erro ao excluir instância');
-      console.error(error);
-    }
-  };
-
-  const toggleAutoReply = async (instanceId: string, currentValue: boolean) => {
-    try {
-      const response = await fetch(`/api/whatsapp/instances/${instanceId}`, {
+      const res = await fetch(`/api/whatsapp/instances/${instance.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ autoReply: !currentValue }),
+        body: JSON.stringify({ autoReply: !instance.autoReply }),
       });
 
-      const data = await response.json();
-      if (data.success) {
-        toast.success(`Auto-resposta ${!currentValue ? 'ativada' : 'desativada'}`);
-        fetchInstances();
-      }
+      if (!res.ok) throw new Error('Erro ao atualizar auto-resposta');
+
+      toast.success(instance.autoReply ? 'Auto-resposta desativada' : 'Auto-resposta ativada');
+      fetchInstances();
     } catch (error) {
       toast.error('Erro ao atualizar auto-resposta');
     }
   };
 
-  const toggleActive = async (instanceId: string, currentValue: boolean) => {
+  const toggleIsActive = async (instance: WhatsAppInstance) => {
     try {
-      const response = await fetch(`/api/whatsapp/instances/${instanceId}`, {
+      const res = await fetch(`/api/whatsapp/instances/${instance.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isActive: !currentValue }),
+        body: JSON.stringify({ isActive: !instance.isActive }),
       });
 
-      const data = await response.json();
-      if (data.success) {
-        toast.success(`Chat ${!currentValue ? 'ativado' : 'desativado'}`);
-        fetchInstances();
-      }
+      if (!res.ok) throw new Error('Erro ao atualizar status ativo');
+
+      toast.success(instance.isActive ? 'Chat desativado' : 'Chat ativado');
+      fetchInstances();
     } catch (error) {
-      toast.error('Erro ao atualizar status do chat');
+      toast.error('Erro ao atualizar status ativo');
     }
   };
 
-  const updateConfig = async () => {
-    if (!configInstance) return;
+  const updateInstanceConfig = async () => {
+    if (!selectedInstance) return;
 
-    setEditingConfig(true);
     try {
-      const response = await fetch(`/api/whatsapp/instances/${configInstance.id}`, {
+      const res = await fetch(`/api/whatsapp/instances/${selectedInstance.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: configInstance.name,
-          companyName: configInstance.companyName,
-          messagesPerBatch: configInstance.messagesPerBatch,
-          proxyUrl: configInstance.proxyUrl,
+          name,
+          companyName: companyName || undefined,
+          messagesPerBatch,
+          proxyUrl: proxyUrl || undefined,
         }),
       });
 
-      const data = await response.json();
-      if (data.success) {
-        toast.success('Configurações atualizadas!');
-        setConfigInstance(null);
-        fetchInstances();
-      } else {
-        toast.error(data.error || 'Erro ao atualizar');
-      }
+      if (!res.ok) throw new Error('Erro ao atualizar configuração');
+
+      toast.success('Configuração atualizada!');
+      setConfigDialogOpen(false);
+      fetchInstances();
     } catch (error) {
-      toast.error('Erro ao atualizar configurações');
-    } finally {
-      setEditingConfig(false);
+      toast.error('Erro ao atualizar configuração');
     }
   };
 
-  const showQRCode = async (instance: Instance) => {
-    if (instance.qrCode) {
-      try {
-        const url = await QRCode.toDataURL(instance.qrCode);
-        setQrCodeUrl(url);
-        setSelectedInstance(instance);
-      } catch (error) {
-        toast.error('Erro ao gerar QR Code');
-      }
+  const deleteInstance = async () => {
+    if (!selectedInstance) return;
+
+    try {
+      const res = await fetch(`/api/whatsapp/instances/${selectedInstance.id}`, {
+        method: 'DELETE',
+      });
+
+      if (!res.ok) throw new Error('Erro ao deletar instância');
+
+      toast.success('Instância deletada');
+      setDeleteDialogOpen(false);
+      fetchInstances();
+    } catch (error) {
+      toast.error('Erro ao deletar instância');
     }
+  };
+
+  const openConfigDialog = (instance: WhatsAppInstance) => {
+    setSelectedInstance(instance);
+    setName(instance.name);
+    setCompanyName(instance.companyName || '');
+    setMessagesPerBatch(instance.messagesPerBatch);
+    setProxyUrl(instance.proxyUrl || '');
+    setConfigDialogOpen(true);
+  };
+
+  const openDeleteDialog = (instance: WhatsAppInstance) => {
+    setSelectedInstance(instance);
+    setDeleteDialogOpen(true);
+  };
+
+  const resetForm = () => {
+    setName('');
+    setCompanyName('');
+    setMessagesPerBatch(20);
+    setProxyUrl('');
   };
 
   const getStatusBadge = (status: string) => {
-    const variants: { [key: string]: { className: string, icon: any, label: string } } = {
-      connected: { className: 'bg-green-100 text-green-800 border-green-200', icon: Power, label: 'Conectado' },
-      connecting: { className: 'bg-yellow-100 text-yellow-800 border-yellow-200', icon: RefreshCw, label: 'Conectando...' },
-      disconnected: { className: 'bg-gray-100 text-gray-800 border-gray-300', icon: PowerOff, label: 'Desconectado' },
-      paused: { className: 'bg-orange-100 text-orange-800 border-orange-200', icon: Pause, label: 'Pausado' },
-      error: { className: 'bg-red-100 text-red-800 border-red-200', icon: PowerOff, label: 'Erro' },
+    const variants: Record<string, { variant: any; label: string }> = {
+      connected: { variant: 'default', label: '✅ Conectado' },
+      connecting: { variant: 'secondary', label: '🔄 Conectando' },
+      disconnected: { variant: 'destructive', label: '❌ Desconectado' },
+      paused: { variant: 'outline', label: '⏸️ Pausado' },
+      error: { variant: 'destructive', label: '⚠️ Erro' },
     };
 
     const config = variants[status] || variants.disconnected;
-    const Icon = config.icon;
-
-    return (
-      <Badge className={`gap-1 ${config.className}`}>
-        <Icon className="h-3 w-3" />
-        {config.label}
-      </Badge>
-    );
-  };
-
-  const formatPhoneNumber = (phone?: string) => {
-    if (!phone) return 'Não conectado';
-    // Formato: 55 31 99988-7766
-    const match = phone.match(/^(\d{2})(\d{2})(\d{5})(\d{4})$/);
-    if (match) {
-      return `+${match[1]} ${match[2]} ${match[3]}-${match[4]}`;
-    }
-    return phone;
-  };
-
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return 'Nunca';
-    const date = new Date(dateString);
-    return date.toLocaleString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-
-  const toggleExpand = (instanceId: string) => {
-    const newExpanded = new Set(expandedInstances);
-    if (newExpanded.has(instanceId)) {
-      newExpanded.delete(instanceId);
-    } else {
-      newExpanded.add(instanceId);
-    }
-    setExpandedInstances(newExpanded);
+    return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
   if (loading) {
     return (
-      <Card>
-        <CardContent className="py-8">
-          <div className="flex items-center justify-center">
-            <RefreshCw className="h-6 w-6 animate-spin text-blue-600" />
-            <span className="ml-2 text-gray-600">Carregando instâncias...</span>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      {/* Header com Logo */}
-      <Card className="border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-purple-50">
+      <Card className="bg-white/80 backdrop-blur-sm border-2 border-blue-200 shadow-lg">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="relative w-12 h-12">
-                <Image
-                  src="https://cdn.abacus.ai/images/39b61f97-0e0e-4dce-862e-079001e361c2.png"
-                  alt="DevSphere.ai Logo"
-                  fill
-                  className="object-contain"
-                />
-              </div>
+              <Image 
+                src="/logo-devsphere.png" 
+                alt="DevSphere.ai - Logo" 
+                width={48} 
+                height={48}
+                className="rounded-lg"
+              />
               <div>
-                <CardTitle className="text-2xl bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                  Gerenciamento de Números
-                </CardTitle>
-                <CardDescription>
-                  Conecte e gerencie números WhatsApp ilimitados via Baileys
-                </CardDescription>
+                <CardTitle className="text-2xl">Gerenciamento de Números WhatsApp</CardTitle>
+                <CardDescription>Conecte e gerencie múltiplos números sem limites</CardDescription>
               </div>
             </div>
-            <Dialog>
+            <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
               <DialogTrigger asChild>
                 <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Nova Instância
+                  <Plus className="w-4 h-4 mr-2" />
+                  Novo Número
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-[500px]">
+              <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Criar Nova Instância WhatsApp</DialogTitle>
-                  <DialogDescription>
-                    Configure uma nova instância para conectar um número via QR Code
-                  </DialogDescription>
+                  <DialogTitle>Conectar Novo Número WhatsApp</DialogTitle>
+                  <DialogDescription>Crie uma nova instância para conectar um número via QR Code</DialogDescription>
                 </DialogHeader>
-                <div className="space-y-4 py-4">
-                  <div className="flex-1">
-                    <Label htmlFor="instance-name">Nome da Instância</Label>
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="name">Nome da Instância *</Label>
                     <Input
-                      id="instance-name"
-                      placeholder="Centermed - Atendimento"
-                      value={newInstanceName}
-                      onChange={(e) => setNewInstanceName(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && createInstance()}
+                      id="name"
+                      placeholder="Ex: Atendimento Principal"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
                     />
                   </div>
-
-                  <div className="flex-1">
-                    <Label htmlFor="company-name">Empresa Vinculada</Label>
+                  <div>
+                    <Label htmlFor="companyName">Nome da Empresa (Opcional)</Label>
                     <Input
-                      id="company-name"
-                      placeholder="Centermed"
+                      id="companyName"
+                      placeholder="Ex: Sua Empresa"
                       value={companyName}
                       onChange={(e) => setCompanyName(e.target.value)}
                     />
                   </div>
-
-                  <div className="flex items-center justify-between py-2">
-                    <Label>Configurações Avançadas</Label>
-                    <Switch
-                      checked={showAdvanced}
-                      onCheckedChange={setShowAdvanced}
+                  <div>
+                    <Label htmlFor="messagesPerBatch">Mensagens por Lote (Rate Limiting)</Label>
+                    <Input
+                      id="messagesPerBatch"
+                      type="number"
+                      placeholder="20"
+                      value={messagesPerBatch}
+                      onChange={(e) => setMessagesPerBatch(parseInt(e.target.value) || 20)}
                     />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Define quantas mensagens enviar antes de fazer uma pausa
+                    </p>
                   </div>
-
-                  {showAdvanced && (
-                    <div className="space-y-4 border-t pt-4">
-                      <div>
-                        <Label htmlFor="messages-per-batch">Mensagens por Lote</Label>
-                        <Select value={messagesPerBatch.toString()} onValueChange={(v) => setMessagesPerBatch(parseInt(v))}>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="10">10 mensagens</SelectItem>
-                            <SelectItem value="20">20 mensagens</SelectItem>
-                            <SelectItem value="50">50 mensagens (Recomendado)</SelectItem>
-                            <SelectItem value="100">100 mensagens</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <p className="text-xs text-gray-500 mt-1">
-                          Quantidade de mensagens antes de rotação de IP/DNS
-                        </p>
-                      </div>
-
-                      <div>
-                        <Label htmlFor="proxy-url">URL do Proxy (Opcional)</Label>
-                        <Input
-                          id="proxy-url"
-                          placeholder="https://proxy.example.com ou deixe vazio"
-                          value={proxyUrl}
-                          onChange={(e) => setProxyUrl(e.target.value)}
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
-                <DialogFooter>
-                  <Button onClick={createInstance} disabled={creating}>
-                    {creating ? 'Criando...' : 'Criar Instância'}
+                  <div>
+                    <Label htmlFor="proxyUrl">Proxy URL (Opcional)</Label>
+                    <Input
+                      id="proxyUrl"
+                      placeholder="http://proxy:port"
+                      value={proxyUrl}
+                      onChange={(e) => setProxyUrl(e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Use proxy para rotação de IP dinâmica
+                    </p>
+                  </div>
+                  <Button onClick={createInstance} className="w-full">
+                    Criar e Conectar
                   </Button>
-                </DialogFooter>
+                </div>
               </DialogContent>
             </Dialog>
           </div>
         </CardHeader>
-      </Card>
-
-      {/* Lista de Instâncias */}
-      {instances.length === 0 ? (
-        <Card>
-          <CardContent className="py-12">
-            <div className="text-center">
-              <MessageSquare className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                Nenhuma instância criada
-              </h3>
-              <p className="text-gray-600 mb-4">
-                Crie sua primeira instância para começar a enviar mensagens via WhatsApp
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid gap-4">
-          {instances.map((instance) => {
-            const isExpanded = expandedInstances.has(instance.id);
-            
-            return (
-              <Card key={instance.id} className="hover:shadow-lg transition-shadow bg-white">
-                <CardContent className="p-6">
-                  {/* Linha Principal */}
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-4 flex-1">
-                      {/* Status Indicator */}
-                      <div className={`w-3 h-3 rounded-full ${
-                        instance.status === 'connected' ? 'bg-green-500 animate-pulse' :
-                        instance.status === 'connecting' ? 'bg-yellow-500 animate-pulse' :
-                        instance.status === 'paused' ? 'bg-orange-500' :
-                        'bg-gray-400'
-                      }`} />
-                      
-                      {/* Informações Principais */}
+        <CardContent>
+          <div className="grid gap-4 md:grid-cols-2">
+            {instances.length === 0 ? (
+              <div className="col-span-2 text-center py-8 text-muted-foreground">
+                Nenhum número conectado. Clique em "Novo Número" para começar!
+              </div>
+            ) : (
+              instances.map((instance) => (
+                <Card key={instance.id} className="border-2 hover:shadow-lg transition-shadow">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="text-lg font-semibold text-gray-900">{instance.name}</h3>
+                        <CardTitle className="text-lg flex items-center gap-2">
+                          {instance.name}
                           {getStatusBadge(instance.status)}
-                          {!instance.isActive && (
-                            <Badge variant="outline" className="gap-1 text-gray-600">
-                              <PowerOff className="h-3 w-3" />
-                              Chat Inativo
-                            </Badge>
+                        </CardTitle>
+                        <div className="space-y-1 mt-2">
+                          {instance.phoneNumber && (
+                            <p className="text-sm text-blue-600 font-semibold">
+                              📱 {instance.phoneNumber}
+                            </p>
                           )}
-                        </div>
-                        
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                          <div className="flex items-center gap-2 text-gray-600">
-                            <MessageSquare className="h-4 w-4" />
-                            <span className="font-medium">{formatPhoneNumber(instance.phoneNumber)}</span>
-                          </div>
-                          
                           {instance.companyName && (
-                            <div className="flex items-center gap-2 text-gray-600">
-                              <Building2 className="h-4 w-4" />
-                              <span>{instance.companyName}</span>
-                            </div>
+                            <p className="text-sm text-muted-foreground">
+                              🏢 {instance.companyName}
+                            </p>
                           )}
-                          
-                          <div className="flex items-center gap-2 text-gray-600">
-                            <Activity className="h-4 w-4" />
-                            <span className="font-medium text-blue-600">
-                              {instance.totalMessagesSent.toLocaleString('pt-BR')} disparos
-                            </span>
-                          </div>
-                          
-                          <div className="flex items-center gap-2 text-gray-600">
-                            <Clock className="h-4 w-4" />
-                            <span className="text-xs">{formatDate(instance.lastConnectedAt)}</span>
-                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            📊 Total enviado: <strong>{instance.totalMessagesSent}</strong> msgs
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            🔢 Lote atual: {instance.currentMessageCount}/{instance.messagesPerBatch}
+                          </p>
+                          {instance.lastConnected && (
+                            <p className="text-xs text-muted-foreground">
+                              🕐 Última conexão: {new Date(instance.lastConnected).toLocaleString('pt-BR')}
+                            </p>
+                          )}
                         </div>
                       </div>
                     </div>
-
-                    {/* Botões de Ação */}
-                    <div className="flex items-center gap-2">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => toggleExpand(instance.id)}
-                      >
-                        {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                      </Button>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {/* Toggles */}
+                    <div className="flex items-center justify-between p-2 bg-muted/50 rounded">
+                      <Label htmlFor={`autoReply-${instance.id}`} className="text-sm cursor-pointer">
+                        🤖 Resposta Automática (IA)
+                      </Label>
+                      <Switch
+                        id={`autoReply-${instance.id}`}
+                        checked={instance.autoReply}
+                        onCheckedChange={() => toggleAutoReply(instance)}
+                      />
                     </div>
-                  </div>
+                    <div className="flex items-center justify-between p-2 bg-muted/50 rounded">
+                      <Label htmlFor={`isActive-${instance.id}`} className="text-sm cursor-pointer">
+                        💬 Chat Ativo
+                      </Label>
+                      <Switch
+                        id={`isActive-${instance.id}`}
+                        checked={instance.isActive}
+                        onCheckedChange={() => toggleIsActive(instance)}
+                      />
+                    </div>
 
-                  {/* Detalhes Expandidos */}
-                  {isExpanded && (
-                    <>
-                      <Separator className="my-4" />
-                      
-                      <div className="space-y-4">
-                        {/* Estatísticas Detalhadas */}
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                          <div className="bg-blue-50 rounded-lg p-3">
-                            <p className="text-xs text-gray-600 mb-1">Lote Atual</p>
-                            <p className="text-xl font-bold text-blue-600">
-                              {instance.currentMessageCount}/{instance.messagesPerBatch}
-                            </p>
-                          </div>
-                          
-                          <div className="bg-green-50 rounded-lg p-3">
-                            <p className="text-xs text-gray-600 mb-1">Total de Disparos</p>
-                            <p className="text-xl font-bold text-green-600">
-                              {instance.totalMessagesSent.toLocaleString('pt-BR')}
-                            </p>
-                          </div>
-                          
-                          <div className="bg-purple-50 rounded-lg p-3">
-                            <p className="text-xs text-gray-600 mb-1">Mensagens/Lote</p>
-                            <p className="text-xl font-bold text-purple-600">
-                              {instance.messagesPerBatch}
-                            </p>
-                          </div>
-                          
-                          <div className="bg-orange-50 rounded-lg p-3">
-                            <p className="text-xs text-gray-600 mb-1">Última Conexão</p>
-                            <p className="text-sm font-semibold text-orange-600">
-                              {formatDate(instance.lastConnectedAt).split(',')[0]}
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* Configurações */}
-                        <div className="flex items-center gap-4 bg-gray-50 rounded-lg p-3">
-                          <div className="flex items-center gap-2">
-                            <Switch
-                              checked={instance.autoReply}
-                              onCheckedChange={() => toggleAutoReply(instance.id, instance.autoReply)}
-                            />
-                            <Label className="text-sm">Auto-resposta IA</Label>
-                          </div>
-                          
-                          <Separator orientation="vertical" className="h-6" />
-                          
-                          <div className="flex items-center gap-2">
-                            <Switch
-                              checked={instance.isActive}
-                              onCheckedChange={() => toggleActive(instance.id, instance.isActive)}
-                            />
-                            <Label className="text-sm">Chat Ativo</Label>
-                          </div>
-                        </div>
-
-                        {/* Ações */}
-                        <div className="flex flex-wrap gap-2">
-                          {instance.status === 'disconnected' && (
-                            <Button
-                              size="sm"
-                              onClick={() => connectInstance(instance.id)}
-                              className="bg-green-600 hover:bg-green-700"
-                            >
-                              <Power className="h-4 w-4 mr-2" />
-                              Conectar
-                            </Button>
-                          )}
-
-                          {instance.status === 'connecting' && instance.qrCode && (
-                            <Button
-                              size="sm"
-                              onClick={() => showQRCode(instance)}
-                              className="bg-blue-600 hover:bg-blue-700"
-                            >
-                              <QrCode className="h-4 w-4 mr-2" />
-                              Ver QR Code
-                            </Button>
-                          )}
-
-                          {instance.status === 'connected' && (
-                            <>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => pauseInstance(instance.id)}
-                              >
-                                <Pause className="h-4 w-4 mr-2" />
-                                Pausar
-                              </Button>
-                              
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => disconnectInstance(instance.id)}
-                              >
-                                <PowerOff className="h-4 w-4 mr-2" />
-                                Desconectar
-                              </Button>
-                            </>
-                          )}
-
-                          {instance.status === 'paused' && (
-                            <Button
-                              size="sm"
-                              onClick={() => resumeInstance(instance.id)}
-                              className="bg-green-600 hover:bg-green-700"
-                            >
-                              <Play className="h-4 w-4 mr-2" />
-                              Retomar
-                            </Button>
-                          )}
-
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setConfigInstance(instance)}
-                          >
-                            <Settings className="h-4 w-4 mr-2" />
-                            Configurar
-                          </Button>
-
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() => deleteInstance(instance.id)}
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Excluir
-                          </Button>
-
-                          {instance.status === 'connected' && (
+                    {/* Action Buttons */}
+                    <div className="flex flex-wrap gap-2">
+                      {instance.status === 'disconnected' || instance.status === 'error' ? (
+                        <Button
+                          size="sm"
+                          onClick={() => connectInstance(instance.id)}
+                          className="flex-1 bg-green-600 hover:bg-green-700"
+                        >
+                          <Power className="w-4 h-4 mr-1" />
+                          Conectar
+                        </Button>
+                      ) : (
+                        <>
+                          {instance.status === 'paused' ? (
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => connectInstance(instance.id)}
+                              onClick={() => togglePause(instance)}
+                              className="flex-1"
                             >
-                              <RefreshCw className="h-4 w-4 mr-2" />
-                              Reconectar
+                              <Play className="w-4 h-4 mr-1" />
+                              Retomar
+                            </Button>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => togglePause(instance)}
+                              className="flex-1"
+                            >
+                              <Pause className="w-4 h-4 mr-1" />
+                              Pausar
                             </Button>
                           )}
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      )}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => disconnectInstance(instance.id)}
+                            className="flex-1"
+                          >
+                            <PowerOff className="w-4 h-4 mr-1" />
+                            Desconectar
+                          </Button>
+                        </>
+                      )}
+                    </div>
 
-      {/* Dialog QR Code */}
-      <Dialog open={!!qrCodeUrl} onOpenChange={() => { setQrCodeUrl(null); setSelectedInstance(null); }}>
-        <DialogContent className="sm:max-w-[425px]">
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => openConfigDialog(instance)}
+                        className="flex-1"
+                      >
+                        <Settings className="w-4 h-4 mr-1" />
+                        Configurar
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => openDeleteDialog(instance)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* QR Code Dialog */}
+      <Dialog open={qrDialogOpen} onOpenChange={setQrDialogOpen}>
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle>Escanear QR Code</DialogTitle>
-            <DialogDescription>
-              Use o WhatsApp para escanear este código e conectar a instância {selectedInstance?.name}
-            </DialogDescription>
+            <DialogTitle>Escaneie o QR Code</DialogTitle>
+            <DialogDescription>Abra o WhatsApp no celular e escaneie o código</DialogDescription>
           </DialogHeader>
-          {qrCodeUrl && (
-            <div className="flex flex-col items-center gap-4 py-4">
-              <div className="relative w-64 h-64 bg-white rounded-lg p-4">
-                <Image
-                  src={qrCodeUrl}
-                  alt="QR Code"
-                  fill
-                  className="object-contain"
-                />
-              </div>
-              <div className="text-center space-y-2">
-                <p className="text-sm text-gray-600">
-                  1. Abra o WhatsApp no seu celular
-                </p>
-                <p className="text-sm text-gray-600">
-                  2. Toque em Menu (⋮) ou Configurações e selecione "Aparelhos conectados"
-                </p>
-                <p className="text-sm text-gray-600">
-                  3. Toque em "Conectar um aparelho"
-                </p>
-                <p className="text-sm text-gray-600">
-                  4. Aponte seu celular para esta tela para capturar o código
-                </p>
-              </div>
+          <div className="flex flex-col items-center space-y-4">
+            {currentQr && (
+              <img src={currentQr} alt="QR Code" className="w-64 h-64 border-4 border-blue-500 rounded-lg" />
+            )}
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Aguardando leitura do QR Code...
             </div>
-          )}
+          </div>
         </DialogContent>
       </Dialog>
 
-      {/* Dialog Configurações */}
-      <Dialog open={!!configInstance} onOpenChange={() => setConfigInstance(null)}>
-        <DialogContent className="sm:max-w-[500px]">
+      {/* Config Dialog */}
+      <Dialog open={configDialogOpen} onOpenChange={setConfigDialogOpen}>
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>Configurar Instância</DialogTitle>
-            <DialogDescription>
-              Ajuste as configurações da instância {configInstance?.name}
-            </DialogDescription>
+            <DialogDescription>Atualize as configurações da instância</DialogDescription>
           </DialogHeader>
-          {configInstance && (
-            <div className="space-y-4 py-4">
-              <div>
-                <Label htmlFor="edit-name">Nome da Instância</Label>
-                <Input
-                  id="edit-name"
-                  value={configInstance.name}
-                  onChange={(e) => setConfigInstance({ ...configInstance, name: e.target.value })}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="edit-company">Empresa Vinculada</Label>
-                <Input
-                  id="edit-company"
-                  value={configInstance.companyName || ''}
-                  onChange={(e) => setConfigInstance({ ...configInstance, companyName: e.target.value })}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="edit-messages">Mensagens por Lote</Label>
-                <Select 
-                  value={configInstance.messagesPerBatch.toString()} 
-                  onValueChange={(v) => setConfigInstance({ ...configInstance, messagesPerBatch: parseInt(v) })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="10">10 mensagens</SelectItem>
-                    <SelectItem value="20">20 mensagens</SelectItem>
-                    <SelectItem value="50">50 mensagens</SelectItem>
-                    <SelectItem value="100">100 mensagens</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label htmlFor="edit-proxy">URL do Proxy</Label>
-                <Input
-                  id="edit-proxy"
-                  placeholder="https://proxy.example.com"
-                  value={configInstance.proxyUrl || ''}
-                  onChange={(e) => setConfigInstance({ ...configInstance, proxyUrl: e.target.value })}
-                />
-              </div>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="edit-name">Nome da Instância</Label>
+              <Input
+                id="edit-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
             </div>
-          )}
-          <DialogFooter>
-            <Button onClick={updateConfig} disabled={editingConfig}>
-              {editingConfig ? 'Salvando...' : 'Salvar Alterações'}
+            <div>
+              <Label htmlFor="edit-companyName">Nome da Empresa</Label>
+              <Input
+                id="edit-companyName"
+                value={companyName}
+                onChange={(e) => setCompanyName(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-messagesPerBatch">Mensagens por Lote</Label>
+              <Input
+                id="edit-messagesPerBatch"
+                type="number"
+                value={messagesPerBatch}
+                onChange={(e) => setMessagesPerBatch(parseInt(e.target.value) || 20)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-proxyUrl">Proxy URL</Label>
+              <Input
+                id="edit-proxyUrl"
+                value={proxyUrl}
+                onChange={(e) => setProxyUrl(e.target.value)}
+              />
+            </div>
+            <Button onClick={updateInstanceConfig} className="w-full">
+              Salvar Configurações
             </Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja deletar esta instância? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={deleteInstance} className="bg-red-600 hover:bg-red-700">
+              Deletar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

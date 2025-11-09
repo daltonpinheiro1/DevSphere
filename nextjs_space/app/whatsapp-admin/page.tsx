@@ -4,93 +4,66 @@
 import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { MessageSquare, Users, FileText, Send } from 'lucide-react';
-import InstancesManager from '@/components/whatsapp/instances-manager';
-import ContactsManager from '@/components/whatsapp/contacts-manager';
+import { InstancesManager } from '@/components/whatsapp/instances-manager';
 import TemplatesManager from '@/components/whatsapp/templates-manager';
 import CampaignsManager from '@/components/whatsapp/campaigns-manager';
+import ContactsManager from '@/components/whatsapp/contacts-manager';
 
 export default function WhatsAppAdminPage() {
-  const [activeTab, setActiveTab] = useState('instances');
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-8 px-4">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 py-8">
+      <div className="container mx-auto px-4">
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
             <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              WhatsApp Business Manager
+              DevSphere.ai - WhatsApp Business
             </h1>
-            <span className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-full text-sm font-semibold shadow-lg">
-              Centermed
-            </span>
+            <div className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-semibold">
+              Plataforma de Automação
+            </div>
           </div>
-          <p className="text-gray-600 mt-2">
-            Gerencie suas instâncias, contatos, templates e campanhas de envio em massa
-          </p>
-        </div>
-        
-        {/* Quick Start Guide */}
-        <Card className="mb-8 bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200">
-          <CardHeader>
-            <CardTitle className="text-blue-900">🚀 Início Rápido - Centermed</CardTitle>
-            <CardDescription>Siga estes passos para começar a enviar mensagens</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ol className="space-y-3 text-sm text-gray-700">
-              <li className="flex items-start gap-2">
-                <span className="bg-blue-600 text-white rounded-full w-6 h-6 flex items-center justify-center flex-shrink-0 text-xs font-bold">1</span>
-                <span><strong>Instâncias:</strong> Crie uma nova instância (ex: "Centermed - Atendimento") e conecte via QR Code</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="bg-blue-600 text-white rounded-full w-6 h-6 flex items-center justify-center flex-shrink-0 text-xs font-bold">2</span>
-                <span><strong>Contatos:</strong> Importe ou adicione seus contatos manualmente</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="bg-blue-600 text-white rounded-full w-6 h-6 flex items-center justify-center flex-shrink-0 text-xs font-bold">3</span>
-                <span><strong>Templates:</strong> Crie mensagens personalizadas com variáveis</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="bg-blue-600 text-white rounded-full w-6 h-6 flex items-center justify-center flex-shrink-0 text-xs font-bold">4</span>
-                <span><strong>Campanhas:</strong> Configure e inicie seu envio em massa com controle de intervalos</span>
-              </li>
-            </ol>
-          </CardContent>
-        </Card>
 
-        <Tabs defaultValue="instances" value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4 mb-8">
-            <TabsTrigger 
-              value="instances" 
-              className="flex items-center gap-2" 
-              onClick={() => setActiveTab('instances')}
-            >
-              <MessageSquare className="h-4 w-4" />
-              Instâncias
+          <Card className="bg-white/80 backdrop-blur-sm border-2 border-blue-200 shadow-lg">
+            <CardHeader>
+              <CardTitle className="text-blue-900">🚀 Início Rápido - DevSphere.ai</CardTitle>
+              <CardDescription>Siga os passos abaixo para começar a usar o sistema de automação WhatsApp</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ol className="space-y-2 text-sm">
+                <li className="flex items-start">
+                  <span className="font-bold text-blue-600 mr-2">1.</span>
+                  <span><strong>Números/Instâncias:</strong> Conecte seus números WhatsApp via QR Code. Cada número é uma instância independente</span>
+                </li>
+                <li className="flex items-start">
+                  <span className="font-bold text-blue-600 mr-2">2.</span>
+                  <span><strong>Templates:</strong> Crie modelos de mensagem com variáveis personalizáveis e imagens</span>
+                </li>
+                <li className="flex items-start">
+                  <span className="font-bold text-blue-600 mr-2">3.</span>
+                  <span><strong>Contatos:</strong> Importe ou adicione contatos manualmente no formato brasileiro</span>
+                </li>
+                <li className="flex items-start">
+                  <span className="font-bold text-blue-600 mr-2">4.</span>
+                  <span><strong>Campanhas:</strong> Configure disparos em massa com intervalos personalizados</span>
+                </li>
+              </ol>
+            </CardContent>
+          </Card>
+        </div>
+
+        <Tabs defaultValue="instances" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-4 bg-white/80 backdrop-blur-sm shadow-lg">
+            <TabsTrigger value="instances" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-purple-600 data-[state=active]:text-white">
+              📱 Números/Instâncias
             </TabsTrigger>
-            <TabsTrigger 
-              value="contacts" 
-              className="flex items-center gap-2"
-              onClick={() => setActiveTab('contacts')}
-            >
-              <Users className="h-4 w-4" />
-              Contatos
+            <TabsTrigger value="templates" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-purple-600 data-[state=active]:text-white">
+              📝 Templates
             </TabsTrigger>
-            <TabsTrigger 
-              value="templates" 
-              className="flex items-center gap-2"
-              onClick={() => setActiveTab('templates')}
-            >
-              <FileText className="h-4 w-4" />
-              Templates
+            <TabsTrigger value="contacts" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-purple-600 data-[state=active]:text-white">
+              👥 Contatos
             </TabsTrigger>
-            <TabsTrigger 
-              value="campaigns" 
-              className="flex items-center gap-2"
-              onClick={() => setActiveTab('campaigns')}
-            >
-              <Send className="h-4 w-4" />
-              Campanhas
+            <TabsTrigger value="campaigns" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-purple-600 data-[state=active]:text-white">
+              🚀 Campanhas
             </TabsTrigger>
           </TabsList>
 
@@ -98,12 +71,12 @@ export default function WhatsAppAdminPage() {
             <InstancesManager />
           </TabsContent>
 
-          <TabsContent value="contacts">
-            <ContactsManager />
-          </TabsContent>
-
           <TabsContent value="templates">
             <TemplatesManager />
+          </TabsContent>
+
+          <TabsContent value="contacts">
+            <ContactsManager />
           </TabsContent>
 
           <TabsContent value="campaigns">
