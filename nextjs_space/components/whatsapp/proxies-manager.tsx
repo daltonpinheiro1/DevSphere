@@ -36,6 +36,7 @@ export default function ProxiesManager() {
   const [loading, setLoading] = useState(true);
   const [testing, setTesting] = useState(false);
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [settingUpOxylabs, setSettingUpOxylabs] = useState(false);
   const [newProxyUrl, setNewProxyUrl] = useState('');
   const [newProxyCountry, setNewProxyCountry] = useState('');
 
@@ -166,6 +167,35 @@ export default function ProxiesManager() {
     }
   };
 
+  const setupOxylabs = async () => {
+    setSettingUpOxylabs(true);
+    
+    try {
+      toast.info('Configurando proxies Oxylabs...');
+      
+      const res = await fetch('/api/whatsapp/proxies/setup-oxylabs', {
+        method: 'POST'
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        const { added, existing } = data.results;
+        toast.success(
+          `✅ Oxylabs configurado! ${added} proxies adicionados, ${existing} já existiam`
+        );
+        loadProxies();
+      } else {
+        toast.error('Erro ao configurar Oxylabs: ' + data.error);
+      }
+    } catch (error) {
+      console.error('Erro ao configurar Oxylabs:', error);
+      toast.error('Erro ao configurar Oxylabs');
+    } finally {
+      setSettingUpOxylabs(false);
+    }
+  };
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'active':
@@ -199,6 +229,16 @@ export default function ProxiesManager() {
         </div>
         
         <div className="flex gap-2">
+          <button
+            onClick={setupOxylabs}
+            disabled={settingUpOxylabs}
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-lg hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            title="Configurar proxies do Oxylabs automaticamente (6 países)"
+          >
+            <Globe className="w-4 h-4" />
+            {settingUpOxylabs ? 'Configurando...' : '⚡ Oxylabs Auto'}
+          </button>
+          
           <button
             onClick={testAllProxies}
             disabled={testing || proxies.length === 0}

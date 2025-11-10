@@ -10,6 +10,22 @@ import http from 'http';
 
 const prisma = new PrismaClient();
 
+// Oxylabs Credentials (Residential Proxies)
+const OXYLABS_HOST = 'pr.oxylabs.io';
+const OXYLABS_PORT = 7777;
+const OXYLABS_USERNAME_BASE = 'customer-dspinheiro_7Wk3n';
+const OXYLABS_PASSWORD = '7aKD+M4SqzZKxWK';
+
+// Países disponíveis para rotação (priorizando América Latina)
+const OXYLABS_COUNTRIES = [
+  { code: 'BR', name: 'Brasil', priority: 1 },
+  { code: 'US', name: 'Estados Unidos', priority: 2 },
+  { code: 'MX', name: 'México', priority: 3 },
+  { code: 'AR', name: 'Argentina', priority: 3 },
+  { code: 'CO', name: 'Colômbia', priority: 3 },
+  { code: 'CL', name: 'Chile', priority: 3 },
+];
+
 export interface ProxyConfig {
   id?: string;
   url: string; // formato: http://user:pass@host:port ou socks5://host:port
@@ -40,7 +56,11 @@ class ProxyPool {
   async loadProxiesFromDB() {
     try {
       const dbProxies = await prisma.proxyServer.findMany({
-        where: { status: 'active' }
+        where: { 
+          status: {
+            in: ['active', 'testing']  // Carregar proxies ativos e em teste
+          }
+        }
       });
 
       for (const proxy of dbProxies) {
@@ -317,8 +337,85 @@ class ProxyPool {
   }
 }
 
+/**
+ * Função helper para adicionar proxies do Oxylabs automaticamente
+ */
+export async function setupOxylabsProxies() {
+  console.log('🌐 Configurando proxies do Oxylabs...');
+  
+  const results = {
+    added: 0,
+    existing: 0,
+    failed: 0,
+  };
+
+  for (const country of OXYLABS_COUNTRIES) {
+    try {
+      // Formato Oxylabs: customer-username-cc-COUNTRY
+      const username = `${OXYLABS_USERNAME_BASE}-cc-${country.code}`;
+      const proxyUrl = `http://${username}:${OXYLABS_PASSWORD}@${OXYLABS_HOST}:${OXYLABS_PORT}`;
+
+      // Verificar se já existe
+      const existing = await prisma.proxyServer.findFirst({
+        where: {
+          url: proxyUrl
+        }
+      });
+
+      if (existing) {
+        console.log(`  ✓ Proxy ${country.name} (${country.code}) já existe`);
+        results.existing++;
+        continue;
+      }
+
+      // Adicionar proxy ao banco
+      await prisma.proxyServer.create({
+        data: {
+          url: proxyUrl,
+          protocol: 'http',
+          host: OXYLABS_HOST,
+          port: OXYLABS_PORT,
+          username: username,
+          password: OXYLABS_PASSWORD,
+          country: country.name,
+          status: 'testing',
+          responseTime: 0,
+          successRate: 100,
+          totalUses: 0,
+          totalFailures: 0,
+        }
+      });
+
+      console.log(`  ✅ Proxy ${country.name} (${country.code}) adicionado`);
+      results.added++;
+    } catch (error) {
+      console.error(`  ❌ Erro ao adicionar proxy ${country.name}:`, error);
+      results.failed++;
+    }
+  }
+
+  console.log(`\n📊 Resultado: ${results.added} adicionados, ${results.existing} já existiam, ${results.failed} falharam\n`);
+
+  // Recarregar proxies no pool
+  await proxyPool.loadProxiesFromDB();
+  
+  // Testar todos os proxies
+  if (results.added > 0) {
+    console.log('🧪 Testando proxies adicionados...');
+    const testResults = await proxyPool.testAllProxies();
+    console.log(`✅ Teste concluído: ${testResults.active} ativos, ${testResults.inactive} inativos\n`);
+  }
+
+  return results;
+}
+
 // Singleton instance
 export const proxyPool = new ProxyPool();
 
 // Iniciar health check automático
 proxyPool.startHealthCheckLoop();
+
+// Configurar proxies do Oxylabs automaticamente na inicialização
+setupOxylabsProxies().catch(err => {
+  console.error('❌ Erro ao configurar proxies do Oxylabs:', err);
+});
