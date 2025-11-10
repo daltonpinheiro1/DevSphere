@@ -14,6 +14,7 @@ import * as path from 'path';
 import pino from 'pino';
 import QRCode from 'qrcode';
 import { prisma } from '../db';
+import { proxyPool, ProxyConfig } from './proxy-pool';
 
 export class WhatsAppInstanceManager {
   private sock: WASocket | null = null;
@@ -23,6 +24,7 @@ export class WhatsAppInstanceManager {
   private statusCallback?: (status: string) => void;
   private messageCallback?: (message: any) => void;
   private isConnecting = false;
+  private currentProxy: ProxyConfig | null = null;
 
   constructor(instanceId: string) {
     this.instanceId = instanceId;
@@ -88,10 +90,21 @@ export class WhatsAppInstanceManager {
         this.sessionPath
       );
 
-      // Criar socket com configurações otimizadas
+      // Obter proxy rotativo do pool
+      console.log(`🔄 Obtendo proxy rotativo do pool...`);
+      this.currentProxy = proxyPool.getNextProxy();
+      
+      if (this.currentProxy) {
+        console.log(`✅ Usando proxy: ${this.currentProxy.host}:${this.currentProxy.port} (${this.currentProxy.country || 'N/A'})`);
+      } else {
+        console.warn(`⚠️ Nenhum proxy disponível - Conectando sem proxy (risco de bloqueio)`);
+      }
+
+      // Criar socket com configurações otimizadas + proxy
       console.log(`🚀 Criando socket WhatsApp para instância ${this.instanceId}...`);
       const logger = pino({ level: 'silent' });
-      this.sock = makeWASocket({
+      
+      const socketConfig: any = {
         auth: {
           creds: state.creds,
           keys: makeCacheableSignalKeyStore(state.keys, logger as any)
@@ -109,10 +122,18 @@ export class WhatsAppInstanceManager {
         generateHighQualityLinkPreview: false,
         linkPreviewImageThumbnailWidth: 192,
         transactionOpts: { maxCommitRetries: 1, delayBetweenTriesMs: 10 },
-        getMessage: async (key) => {
+        getMessage: async (key: any) => {
           return { conversation: '' }
         },
-      });
+      };
+
+      // Adicionar proxy se disponível
+      if (this.currentProxy) {
+        socketConfig.agent = this.createProxyAgent(this.currentProxy);
+        console.log(`🔐 Proxy configurado no socket`);
+      }
+
+      this.sock = makeWASocket(socketConfig);
 
       console.log(`✅ Socket criado com sucesso para instância ${this.instanceId}`);
 
@@ -510,6 +531,29 @@ export class WhatsAppInstanceManager {
       console.log(`💾 QR Code salvo no banco de dados para instância ${this.instanceId}`);
     } catch (error) {
       console.error(`❌ Erro ao atualizar QR code:`, error);
+    }
+  }
+
+  /**
+   * Cria agente proxy para Baileys
+   */
+  private createProxyAgent(proxy: ProxyConfig): any {
+    try {
+      const proxyUrl = proxy.url;
+      console.log(`🔧 Criando proxy agent: ${proxyUrl}`);
+      
+      // Para proxies SOCKS5, usar SocksProxyAgent
+      if (proxy.protocol === 'socks5') {
+        const { SocksProxyAgent } = require('socks-proxy-agent');
+        return new SocksProxyAgent(proxyUrl);
+      }
+      
+      // Para HTTP/HTTPS, usar HttpsProxyAgent
+      const { HttpsProxyAgent } = require('https-proxy-agent');
+      return new HttpsProxyAgent(proxyUrl);
+    } catch (error) {
+      console.error('❌ Erro ao criar proxy agent:', error);
+      return null;
     }
   }
 

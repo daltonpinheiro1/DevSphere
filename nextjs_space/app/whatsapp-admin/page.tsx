@@ -8,6 +8,7 @@ import { InstancesManager } from '@/components/whatsapp/instances-manager';
 import TemplatesManager from '@/components/whatsapp/templates-manager';
 import CampaignsManager from '@/components/whatsapp/campaigns-manager';
 import ContactsManager from '@/components/whatsapp/contacts-manager';
+import ProxiesManager from '@/components/whatsapp/proxies-manager';
 
 export default function WhatsAppAdminPage() {
   return (
@@ -32,18 +33,22 @@ export default function WhatsAppAdminPage() {
               <ol className="space-y-2 text-sm">
                 <li className="flex items-start">
                   <span className="font-bold text-blue-600 mr-2">1.</span>
-                  <span><strong>Números/Instâncias:</strong> Conecte seus números WhatsApp via QR Code. Cada número é uma instância independente</span>
+                  <span><strong>Proxies (NOVO!):</strong> Configure proxies rotativos para evitar bloqueio de IP - essencial para múltiplas conexões</span>
                 </li>
                 <li className="flex items-start">
                   <span className="font-bold text-blue-600 mr-2">2.</span>
-                  <span><strong>Templates:</strong> Crie modelos de mensagem com variáveis personalizáveis e imagens</span>
+                  <span><strong>Números/Instâncias:</strong> Conecte seus números WhatsApp via QR Code. Cada número é uma instância independente</span>
                 </li>
                 <li className="flex items-start">
                   <span className="font-bold text-blue-600 mr-2">3.</span>
-                  <span><strong>Contatos:</strong> Importe ou adicione contatos manualmente no formato brasileiro</span>
+                  <span><strong>Templates:</strong> Crie modelos de mensagem com variáveis personalizáveis e imagens</span>
                 </li>
                 <li className="flex items-start">
                   <span className="font-bold text-blue-600 mr-2">4.</span>
+                  <span><strong>Contatos:</strong> Importe ou adicione contatos manualmente no formato brasileiro</span>
+                </li>
+                <li className="flex items-start">
+                  <span className="font-bold text-blue-600 mr-2">5.</span>
                   <span><strong>Campanhas:</strong> Configure disparos em massa com intervalos personalizados</span>
                 </li>
               </ol>
@@ -52,9 +57,12 @@ export default function WhatsAppAdminPage() {
         </div>
 
         <Tabs defaultValue="instances" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 bg-white/80 backdrop-blur-sm shadow-lg">
+          <TabsList className="grid w-full grid-cols-5 bg-white/80 backdrop-blur-sm shadow-lg">
             <TabsTrigger value="instances" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-purple-600 data-[state=active]:text-white">
               📱 Números/Instâncias
+            </TabsTrigger>
+            <TabsTrigger value="proxies" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-purple-600 data-[state=active]:text-white">
+              🌐 Proxies
             </TabsTrigger>
             <TabsTrigger value="templates" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-purple-600 data-[state=active]:text-white">
               📝 Templates
@@ -69,6 +77,10 @@ export default function WhatsAppAdminPage() {
 
           <TabsContent value="instances">
             <InstancesManager />
+          </TabsContent>
+
+          <TabsContent value="proxies">
+            <ProxiesManager />
           </TabsContent>
 
           <TabsContent value="templates">

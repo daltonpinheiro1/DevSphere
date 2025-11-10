@@ -218,3 +218,30 @@ model WhatsAppMessage {
   @@unique([instanceId, messageId])
   @@map("whatsapp_messages")
 }
+
+// Proxy Server Pool para rotação de IP
+model ProxyServer {
+  id              String   @id @default(cuid())
+  url             String   @unique // Formato: http://user:pass@host:port ou socks5://host:port
+  protocol        String   // http, https, socks5
+  host            String
+  port            Int
+  username        String?
+  password        String?
+  country         String?  // País do proxy para geolocalização
+  
+  // Status e Performance
+  status          String   @default("testing") // testing, active, inactive
+  lastChecked     DateTime? @map("last_checked")
+  responseTime    Int?     @map("response_time") // Tempo de resposta em ms
+  successRate     Int      @default(100) @map("success_rate") // Taxa de sucesso (0-100)
+  
+  // Contadores
+  totalUses       Int      @default(0) @map("total_uses") // Total de vezes usado
+  totalFailures   Int      @default(0) @map("total_failures") // Total de falhas
+  
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  
+  @@map("proxy_servers")
+}
