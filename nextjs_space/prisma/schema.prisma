@@ -13,12 +13,66 @@ datasource db {
     url      = env("DATABASE_URL")
 }
 
+// User Authentication and Management
+enum UserRole {
+  ADMIN
+  USER
+  GUEST
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  role         UserRole @default(USER)
+  avatar       String?
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  
+  conversations Conversation[]
+  settings      Settings?
+  
+  @@map("users")
+}
+
+model Settings {
+  id              String   @id @default(cuid())
+  userId          String   @unique @map("user_id")
+  
+  // AI Configuration
+  aiModel         String   @default("gpt-4") @map("ai_model")
+  aiTemperature   Float    @default(0.7) @map("ai_temperature")
+  maxTokens       Int      @default(2000) @map("max_tokens")
+  systemPrompt    String?  @map("system_prompt") @db.Text
+  
+  // User Preferences
+  theme           String   @default("dark")
+  language        String   @default("pt-BR")
+  notifications   Boolean  @default(true)
+  
+  // Chatbot Customization
+  chatbotName     String   @default("CENTER AI") @map("chatbot_name")
+  chatbotAvatar   String?  @map("chatbot_avatar")
+  welcomeMessage  String   @default("Olá! Como posso ajudar você hoje?") @map("welcome_message")
+  
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("settings")
+}
+
 model Conversation {
   id        String   @id @default(cuid())
   title     String
+  userId    String?  @map("user_id")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
   messages  Message[]
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@map("conversations")
 }

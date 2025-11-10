@@ -6,6 +6,7 @@ import './globals.css'
 import { Metadata } from 'next'
 import { ThemeProvider } from '@/components/theme-provider'
 import { Toaster } from '@/components/ui/toaster'
+import { Providers } from '@/components/providers'
 
 const inter = Inter({ 
   subsets: ['latin'],
@@ -65,17 +66,19 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <body className={`${inter.variable} ${poppins.variable} font-sans antialiased`} suppressHydrationWarning>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="dark"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <div className="relative min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-purple-900">
-            {children}
-          </div>
-          <Toaster />
-        </ThemeProvider>
+        <Providers>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="dark"
+            enableSystem
+            disableTransitionOnChange
+          >
+            <div className="relative min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-purple-900">
+              {children}
+            </div>
+            <Toaster />
+          </ThemeProvider>
+        </Providers>
       </body>
     </html>
   )
