@@ -6,6 +6,7 @@ import makeWASocket, {
   proto,
   WAMessage,
   ConnectionState,
+  makeCacheableSignalKeyStore,
 } from '@whiskeysockets/baileys';
 import { Boom } from '@hapi/boom';
 import * as fs from 'fs';
@@ -52,6 +53,10 @@ export class WhatsAppInstanceManager {
     this.messageCallback = onMessage;
 
     try {
+      // Aguardar um pouco antes de conectar (evitar rate limiting)
+      console.log(`⏳ Aguardando 2s antes de iniciar conexão...`);
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
       // Limpar QR code antigo no banco de dados
       console.log(`🧹 Limpando QR code antigo da instância ${this.instanceId}...`);
       await prisma.whatsAppInstance.update({
@@ -83,16 +88,17 @@ export class WhatsAppInstanceManager {
         this.sessionPath
       );
 
-      // Criar socket
+      // Criar socket com configurações otimizadas
       console.log(`🚀 Criando socket WhatsApp para instância ${this.instanceId}...`);
       this.sock = makeWASocket({
         auth: state,
-        printQRInTerminal: false,
+        printQRInTerminal: true,  // Ajuda no debug
         logger: pino({ level: 'silent' }),
-        browser: ['Chrome (Linux)', '', ''],
-        generateHighQualityLinkPreview: true,
+        browser: ['DevSphere', 'Chrome', '110.0'],
         syncFullHistory: false,
-        markOnlineOnConnect: true,
+        getMessage: async (key) => {
+          return { conversation: '' }
+        },
       });
 
       console.log(`✅ Socket criado com sucesso para instância ${this.instanceId}`);
@@ -139,11 +145,20 @@ export class WhatsAppInstanceManager {
 
     // QR Code gerado
     if (qr) {
-      console.log(`QR Code gerado para instância ${this.instanceId}`);
-      if (this.qrCodeCallback) {
-        this.qrCodeCallback(qr);
+      console.log(`✅ QR Code gerado para instância ${this.instanceId}`);
+      console.log(`   QR Code (primeiros 50 chars): ${qr.substring(0, 50)}...`);
+      
+      try {
+        await this.updateQRCode(qr);
+        console.log(`   ✅ QR Code salvo no banco de dados`);
+        
+        if (this.qrCodeCallback) {
+          this.qrCodeCallback(qr);
+          console.log(`   ✅ Callback de QR Code executado`);
+        }
+      } catch (qrError) {
+        console.error(`   ❌ Erro ao processar QR Code:`, qrError);
       }
-      await this.updateQRCode(qr);
     }
 
     // Conexão estabelecida
@@ -164,6 +179,7 @@ export class WhatsAppInstanceManager {
     // Conexão fechada
     if (connection === 'close') {
       this.isConnecting = false;
+      this.sock = null;
       
       // Log detalhado do erro
       console.log(`❌ Conexão fechada para instância ${this.instanceId}`);
@@ -172,6 +188,41 @@ export class WhatsAppInstanceManager {
         console.log(`   Status Code: ${statusCode}`);
         console.log(`   Error: ${(lastDisconnect.error as Boom)?.message}`);
         console.log(`   Full error:`, JSON.stringify(lastDisconnect.error, null, 2));
+        
+        // Erros comuns e suas soluções
+        if (statusCode === 401) {
+          console.log(`   ⚠️  Erro 401: Sessão inválida ou expirada. Limpando sessão...`);
+          await this.clearSession();
+          await this.updateStatus('disconnected');
+          return;
+        }
+        
+        if (statusCode === 405) {
+          console.log(`   ⚠️  Erro 405: WhatsApp bloqueou a conexão.`);
+          console.log(`   ℹ️  Isso pode acontecer por:`);
+          console.log(`      - Rate limiting (muitas tentativas)`);
+          console.log(`      - Região/IP bloqueado temporariamente`);
+          console.log(`      - Configuração do navegador detectada`);
+          console.log(`   💡 Dica: Aguarde alguns minutos e tente novamente`);
+          await this.updateStatus('error');
+          // NÃO reconectar automaticamente no erro 405 - deixar o usuário tentar manualmente
+          return;
+        }
+        
+        if (statusCode === 408 || statusCode === 428) {
+          console.log(`   ⚠️  Erro ${statusCode}: Timeout de conexão. Tentando novamente...`);
+          await this.updateStatus('disconnected');
+          setTimeout(() => {
+            if (!this.sock && !this.isConnecting) {
+              this.connect(
+                this.qrCodeCallback,
+                this.statusCallback,
+                this.messageCallback
+              );
+            }
+          }, 3000);
+          return;
+        }
       }
       
       const shouldReconnect =
@@ -187,7 +238,7 @@ export class WhatsAppInstanceManager {
         await this.updateStatus('disconnected');
         // Tentar reconectar após 5 segundos
         setTimeout(() => {
-          if (!this.sock) {
+          if (!this.sock && !this.isConnecting) {
             this.connect(
               this.qrCodeCallback,
               this.statusCallback,
