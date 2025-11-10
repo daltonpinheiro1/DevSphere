@@ -90,13 +90,14 @@ export class WhatsAppInstanceManager {
 
       // Criar socket com configurações otimizadas
       console.log(`🚀 Criando socket WhatsApp para instância ${this.instanceId}...`);
+      const logger = pino({ level: 'silent' });
       this.sock = makeWASocket({
         auth: {
           creds: state.creds,
-          keys: makeCacheableSignalKeyStore(state.keys, pino({ level: 'silent' }))
+          keys: makeCacheableSignalKeyStore(state.keys, logger as any)
         },
         printQRInTerminal: true,  // Ajuda no debug
-        logger: pino({ level: 'silent' }),
+        logger: logger as any,
         browser: ['Chrome (Linux)', '', ''],
         markOnlineOnConnect: false,
         syncFullHistory: false,
