@@ -45,6 +45,7 @@ export class WhatsAppInstanceManager {
       return;
     }
 
+    console.log(`🔌 Iniciando conexão da instância ${this.instanceId}...`);
     this.isConnecting = true;
     this.qrCodeCallback = onQrCode;
     this.statusCallback = onStatus;
@@ -52,6 +53,7 @@ export class WhatsAppInstanceManager {
 
     try {
       // Limpar QR code antigo no banco de dados
+      console.log(`🧹 Limpando QR code antigo da instância ${this.instanceId}...`);
       await prisma.whatsAppInstance.update({
         where: { id: this.instanceId },
         data: { qrCode: null },
@@ -59,35 +61,49 @@ export class WhatsAppInstanceManager {
 
       // Criar diretório de sessão se não existir
       if (!fs.existsSync(this.sessionPath)) {
+        console.log(`📁 Criando diretório de sessão: ${this.sessionPath}`);
         fs.mkdirSync(this.sessionPath, { recursive: true });
       } else {
         // Se já existe e vamos fazer nova conexão, limpar arquivos corrompidos
-        console.log(`Limpando sessão antiga para instância ${this.instanceId}`);
+        console.log(`🗑️  Limpando sessão antiga para instância ${this.instanceId}`);
         try {
           const files = fs.readdirSync(this.sessionPath);
           for (const file of files) {
             fs.unlinkSync(path.join(this.sessionPath, file));
           }
+          console.log(`✅ ${files.length} arquivos de sessão removidos`);
         } catch (cleanError) {
-          console.error('Erro ao limpar sessão:', cleanError);
+          console.error('❌ Erro ao limpar sessão:', cleanError);
         }
       }
 
       // Autenticação multi-arquivo
+      console.log(`🔐 Carregando autenticação multi-arquivo...`);
       const { state, saveCreds } = await useMultiFileAuthState(
         this.sessionPath
       );
 
       // Criar socket
+      console.log(`🚀 Criando socket WhatsApp para instância ${this.instanceId}...`);
       this.sock = makeWASocket({
         auth: state,
         printQRInTerminal: false,
         logger: pino({ level: 'silent' }),
-        browser: ['DevSphere.ai', 'Chrome', '120.0.0'],
+        browser: ['Chrome (Linux)', '', ''],
+        generateHighQualityLinkPreview: true,
+        syncFullHistory: false,
+        markOnlineOnConnect: true,
       });
+
+      console.log(`✅ Socket criado com sucesso para instância ${this.instanceId}`);
 
       // Event: Atualização de conexão
       this.sock.ev.on('connection.update', async (update) => {
+        console.log(`🔄 connection.update event para ${this.instanceId}:`, {
+          connection: update.connection,
+          lastDisconnect: update.lastDisconnect ? 'presente' : 'null',
+          qr: update.qr ? 'QR CODE RECEBIDO!' : 'null',
+        });
         await this.handleConnectionUpdate(update);
       });
 
@@ -104,8 +120,9 @@ export class WhatsAppInstanceManager {
       });
 
       await this.updateStatus('connecting');
+      console.log(`⏳ Status atualizado para 'connecting' - Aguardando QR Code...`);
     } catch (error) {
-      console.error(`Erro ao conectar instância ${this.instanceId}:`, error);
+      console.error(`❌ Erro ao conectar instância ${this.instanceId}:`, error);
       this.isConnecting = false;
       await this.updateStatus('error');
       throw error;
@@ -147,6 +164,16 @@ export class WhatsAppInstanceManager {
     // Conexão fechada
     if (connection === 'close') {
       this.isConnecting = false;
+      
+      // Log detalhado do erro
+      console.log(`❌ Conexão fechada para instância ${this.instanceId}`);
+      if (lastDisconnect) {
+        const statusCode = (lastDisconnect.error as Boom)?.output?.statusCode;
+        console.log(`   Status Code: ${statusCode}`);
+        console.log(`   Error: ${(lastDisconnect.error as Boom)?.message}`);
+        console.log(`   Full error:`, JSON.stringify(lastDisconnect.error, null, 2));
+      }
+      
       const shouldReconnect =
         (lastDisconnect?.error as Boom)?.output?.statusCode !==
         DisconnectReason.loggedOut;
@@ -403,17 +430,21 @@ export class WhatsAppInstanceManager {
    */
   private async updateQRCode(qr: string): Promise<void> {
     try {
+      console.log(`📸 Convertendo QR code para base64 (instância ${this.instanceId})...`);
+      console.log(`   QR text length: ${qr.length} chars`);
+      
       // Converter QR code texto para Data URL (imagem base64)
       const qrDataUrl = await QRCode.toDataURL(qr);
+      console.log(`✅ QR Code convertido! Data URL length: ${qrDataUrl.length} chars`);
       
       await prisma.whatsAppInstance.update({
         where: { id: this.instanceId },
         data: { qrCode: qrDataUrl },
       });
       
-      console.log(`QR Code convertido e salvo para instância ${this.instanceId}`);
+      console.log(`💾 QR Code salvo no banco de dados para instância ${this.instanceId}`);
     } catch (error) {
-      console.error(`Erro ao atualizar QR code:`, error);
+      console.error(`❌ Erro ao atualizar QR code:`, error);
     }
   }
 
