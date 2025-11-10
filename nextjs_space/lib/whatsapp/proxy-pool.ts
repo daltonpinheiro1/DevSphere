@@ -426,6 +426,75 @@ class ProxyPool {
   }
 
   /**
+   * Verifica se há proxies disponíveis (VALIDAÇÃO OBRIGATÓRIA)
+   */
+  async hasAvailableProxies(): Promise<boolean> {
+    const activeProxies = Array.from(this.proxies.values())
+      .filter(p => p.status === 'active');
+    
+    const count = activeProxies.length;
+    console.log(`📊 [ProxyPool] Proxies ativos disponíveis: ${count}`);
+    
+    if (count === 0) {
+      console.error('❌ [ProxyPool] NENHUM PROXY ATIVO! Sistema não pode conectar sem proxy.');
+    }
+    
+    return count > 0;
+  }
+
+  /**
+   * Obtém estatísticas do pool de proxies
+   */
+  async getPoolStats(): Promise<{
+    total: number;
+    active: number;
+    inactive: number;
+    avgResponseTime: number;
+    avgSuccessRate: number;
+  }> {
+    const allProxies = this.getAllProxies();
+    
+    const active = allProxies.filter(p => p.status === 'active').length;
+    const inactive = allProxies.filter(p => p.status === 'inactive' || p.status === 'testing').length;
+    
+    const activeProxies = allProxies.filter(p => p.status === 'active');
+    const avgResponseTime = activeProxies.reduce((sum, p) => sum + (p.responseTime || 0), 0) / (activeProxies.length || 1);
+    const avgSuccessRate = activeProxies.reduce((sum, p) => sum + (p.successRate || 0), 0) / (activeProxies.length || 1);
+
+    return {
+      total: allProxies.length,
+      active,
+      inactive,
+      avgResponseTime: Math.round(avgResponseTime),
+      avgSuccessRate: Math.round(avgSuccessRate * 10) / 10,
+    };
+  }
+
+  /**
+   * Obtém melhor proxy disponível (exclui proxies específicos)
+   */
+  getBestProxy(excludeIds: string[] = []): ProxyConfig | null {
+    const activeProxies = Array.from(this.proxies.values())
+      .filter(p => p.status === 'active' && !excludeIds.includes(p.id || ''))
+      .sort((a, b) => {
+        // Score baseado em taxa de sucesso e tempo de resposta
+        const scoreA = (a.successRate || 0) * 100 - (a.responseTime || 9999);
+        const scoreB = (b.successRate || 0) * 100 - (b.responseTime || 9999);
+        return scoreB - scoreA; // Ordem decrescente (melhor primeiro)
+      });
+
+    if (activeProxies.length === 0) {
+      console.error('❌ [ProxyPool] Nenhum proxy disponível para seleção!');
+      return null;
+    }
+
+    const bestProxy = activeProxies[0];
+    console.log(`🏆 [ProxyPool] Melhor proxy: ${bestProxy.country} (${Math.round((bestProxy.successRate || 0))}% sucesso, ${bestProxy.responseTime}ms)`);
+    
+    return bestProxy;
+  }
+
+  /**
    * Converte configuração de proxy para formato Baileys
    */
   toBalieysProxyConfig(proxy: ProxyConfig) {

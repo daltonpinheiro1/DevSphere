@@ -52,37 +52,63 @@ export class WhatsAppInstanceManager {
     this.statusCallback = onStatus;
     this.messageCallback = onMessage;
 
+    // ✅ VALIDAÇÃO OBRIGATÓRIA: Verificar se há proxies disponíveis ANTES de tentar
+    console.log(`\n🔍 [Validação] Verificando disponibilidade de proxies...`);
+    const hasProxies = await proxyPool.hasAvailableProxies();
+    
+    if (!hasProxies) {
+      const errorMsg = '❌ NENHUM PROXY ATIVO DISPONÍVEL! Não é possível conectar ao WhatsApp sem proxy (risco de bloqueio de IP). Configure proxies primeiro.';
+      console.error(errorMsg);
+      this.isConnecting = false;
+      await this.updateStatus('error');
+      throw new Error(errorMsg);
+    }
+
+    // Obter estatísticas do pool
+    const stats = await proxyPool.getPoolStats();
+    console.log(`📊 [Pool Stats] ${stats.active} proxies ativos, ${stats.inactive} inativos, latência média: ${stats.avgResponseTime}ms`);
+
     // Tentar até 3 vezes com proxies diferentes
     const MAX_RETRIES = 3;
     let lastError: Error | null = null;
+    const usedProxyIds: string[] = []; // Rastrear proxies já tentados
     
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
       try {
         console.log(`\n🔌 [Tentativa ${attempt}/${MAX_RETRIES}] Iniciando conexão da instância ${this.instanceId}...`);
-        await this.connectWithProxy(attempt);
+        await this.connectWithProxy(attempt, usedProxyIds);
         
         // Se chegou aqui, conexão foi bem-sucedida
         if (this.currentProxy?.id) {
           await proxyPool.markProxyAsSuccessful(this.currentProxy.id);
+          console.log(`✅ [Sucesso] Conexão estabelecida com proxy ${this.currentProxy.country} na tentativa ${attempt}`);
         }
         return;
       } catch (error: any) {
         lastError = error;
         console.error(`❌ [Tentativa ${attempt}/${MAX_RETRIES}] Falhou:`, error.message);
 
-        // Se o proxy falhou, marcar como falho
+        // Se o proxy falhou, marcar como falho e adicionar à lista de usados
         if (this.currentProxy?.id) {
           await proxyPool.markProxyAsFailed(this.currentProxy.id, error.message);
+          usedProxyIds.push(this.currentProxy.id);
+          console.log(`📝 [Retry] Proxy ${this.currentProxy.country} marcado como falho. Total de proxies tentados: ${usedProxyIds.length}`);
         }
 
-        // Se não é a última tentativa, aguardar e tentar com outro proxy
+        // Verificar se ainda há proxies disponíveis para a próxima tentativa
         if (attempt < MAX_RETRIES) {
+          const remainingProxies = await proxyPool.hasAvailableProxies();
+          if (!remainingProxies) {
+            console.error(`❌ [Erro Crítico] Nenhum proxy disponível para retry. Abortando...`);
+            break;
+          }
+
           console.log(`⏳ Aguardando 5s antes da próxima tentativa...`);
           await new Promise(resolve => setTimeout(resolve, 5000));
           
           // Limpar sessão corrompida
           await this.clearSession();
-          console.log(`🗑️  Sessão corrompida limpa. Preparando nova tentativa...`);
+          console.log(`🗑️  Sessão corrompida limpa. Preparando nova tentativa com outro proxy...`);
         }
       }
     }
@@ -90,14 +116,15 @@ export class WhatsAppInstanceManager {
     // Se todas as tentativas falharam
     this.isConnecting = false;
     await this.updateStatus('error');
-    console.error(`\n❌ Todas as ${MAX_RETRIES} tentativas falharam. Última erro:`, lastError);
-    throw new Error(`Falha ao conectar após ${MAX_RETRIES} tentativas. Use proxies diferentes.`);
+    console.error(`\n❌ Todas as ${MAX_RETRIES} tentativas falharam. Proxies testados: ${usedProxyIds.length}`);
+    console.error(`   Último erro:`, lastError?.message);
+    throw new Error(`Falha ao conectar após ${MAX_RETRIES} tentativas com ${usedProxyIds.length} proxies diferentes. Verifique os logs para mais detalhes.`);
   }
 
   /**
    * Conecta com um proxy específico
    */
-  private async connectWithProxy(attempt: number): Promise<void> {
+  private async connectWithProxy(attempt: number, excludeProxyIds: string[] = []): Promise<void> {
     this.isConnecting = true;
 
     try {
@@ -126,16 +153,23 @@ export class WhatsAppInstanceManager {
         this.sessionPath
       );
 
-      // Obter proxy rotativo do pool (excluindo o que falhou antes)
-      const excludeProxyId = attempt > 1 ? this.currentProxy?.id : undefined;
-      console.log(`🔄 Obtendo proxy rotativo do pool...`);
-      this.currentProxy = proxyPool.getNextProxy(excludeProxyId);
-      
-      if (this.currentProxy) {
-        console.log(`✅ Usando proxy: ${this.currentProxy.host}:${this.currentProxy.port} (${this.currentProxy.country || 'N/A'})`);
-      } else {
-        console.warn(`⚠️ Nenhum proxy disponível - Conectando sem proxy (risco de bloqueio)`);
+      // ✅ SELEÇÃO INTELIGENTE DE PROXY (excluindo os que falharam)
+      console.log(`🔄 Selecionando melhor proxy disponível...`);
+      if (excludeProxyIds.length > 0) {
+        console.log(`   Excluindo ${excludeProxyIds.length} proxies que falharam anteriormente`);
       }
+      
+      this.currentProxy = proxyPool.getBestProxy(excludeProxyIds);
+      
+      if (!this.currentProxy) {
+        const errorMsg = `❌ FALHA CRÍTICA: Nenhum proxy disponível para tentativa ${attempt}. Configure mais proxies ou aguarde a recuperação dos existentes.`;
+        console.error(errorMsg);
+        throw new Error(errorMsg);
+      }
+
+      console.log(`✅ Proxy selecionado: ${this.currentProxy.country}`);
+      console.log(`   Host: ${this.currentProxy.host}:${this.currentProxy.port}`);
+      console.log(`   Performance: ${Math.round((this.currentProxy.successRate || 0))}% sucesso, ${this.currentProxy.responseTime || 'N/A'}ms latência`);
 
       // Criar socket com configurações otimizadas + proxy
       console.log(`🚀 Criando socket WhatsApp para instância ${this.instanceId}...`);
@@ -164,11 +198,9 @@ export class WhatsAppInstanceManager {
         },
       };
 
-      // Adicionar proxy se disponível
-      if (this.currentProxy) {
-        socketConfig.agent = this.createProxyAgent(this.currentProxy);
-        console.log(`🔐 Proxy configurado no socket`);
-      }
+      // ✅ PROXY OBRIGATÓRIO: Adicionar agent do proxy ao socket
+      socketConfig.agent = this.createProxyAgent(this.currentProxy);
+      console.log(`🔐 Proxy ${this.currentProxy.country} configurado no socket WhatsApp`);
 
       this.sock = makeWASocket(socketConfig);
 
