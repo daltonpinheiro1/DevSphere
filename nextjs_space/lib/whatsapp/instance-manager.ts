@@ -54,8 +54,8 @@ export class WhatsAppInstanceManager {
 
     try {
       // Aguardar um pouco antes de conectar (evitar rate limiting)
-      console.log(`⏳ Aguardando 2s antes de iniciar conexão...`);
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      console.log(`⏳ Aguardando 3s antes de iniciar conexão...`);
+      await new Promise(resolve => setTimeout(resolve, 3000));
       
       // Limpar QR code antigo no banco de dados
       console.log(`🧹 Limpando QR code antigo da instância ${this.instanceId}...`);
@@ -91,11 +91,23 @@ export class WhatsAppInstanceManager {
       // Criar socket com configurações otimizadas
       console.log(`🚀 Criando socket WhatsApp para instância ${this.instanceId}...`);
       this.sock = makeWASocket({
-        auth: state,
+        auth: {
+          creds: state.creds,
+          keys: makeCacheableSignalKeyStore(state.keys, pino({ level: 'silent' }))
+        },
         printQRInTerminal: true,  // Ajuda no debug
         logger: pino({ level: 'silent' }),
-        browser: ['DevSphere', 'Chrome', '110.0'],
+        browser: ['Chrome (Linux)', '', ''],
+        markOnlineOnConnect: false,
         syncFullHistory: false,
+        defaultQueryTimeoutMs: 60000,
+        connectTimeoutMs: 60000,
+        keepAliveIntervalMs: 30000,
+        emitOwnEvents: false,
+        fireInitQueries: false,
+        generateHighQualityLinkPreview: false,
+        linkPreviewImageThumbnailWidth: 192,
+        transactionOpts: { maxCommitRetries: 1, delayBetweenTriesMs: 10 },
         getMessage: async (key) => {
           return { conversation: '' }
         },
@@ -203,8 +215,9 @@ export class WhatsAppInstanceManager {
           console.log(`      - Rate limiting (muitas tentativas)`);
           console.log(`      - Região/IP bloqueado temporariamente`);
           console.log(`      - Configuração do navegador detectada`);
-          console.log(`   💡 Dica: Aguarde alguns minutos e tente novamente`);
-          await this.updateStatus('error');
+          console.log(`   💡 Dica: Aguarde 1-2 minutos e tente novamente`);
+          await this.clearSession(); // Limpar sessão corrompida
+          await this.updateStatus('disconnected');
           // NÃO reconectar automaticamente no erro 405 - deixar o usuário tentar manualmente
           return;
         }
