@@ -206,6 +206,37 @@ class ProxyPool {
   }
 
   /**
+   * Testa todos os proxies e retorna estatísticas
+   */
+  async testAllProxies(): Promise<{ active: number; inactive: number; results: ProxyConfig[] }> {
+    const allProxies = this.getAllProxies();
+    const results: ProxyConfig[] = [];
+    let active = 0;
+    let inactive = 0;
+
+    console.log(`🧪 [ProxyPool] Testando ${allProxies.length} proxies...`);
+
+    for (const proxy of allProxies) {
+      const isHealthy = await this.checkProxyHealth(proxy);
+      
+      if (isHealthy) {
+        active++;
+      } else {
+        inactive++;
+      }
+
+      results.push({
+        ...proxy,
+        status: isHealthy ? 'active' : 'inactive'
+      });
+    }
+
+    console.log(`✅ [ProxyPool] Teste concluído: ${active} ativos, ${inactive} inativos`);
+
+    return { active, inactive, results };
+  }
+
+  /**
    * Verifica saúde do proxy
    */
   async checkProxyHealth(proxy: ProxyConfig): Promise<boolean> {
