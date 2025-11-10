@@ -95,55 +95,93 @@ export function InstancesManager() {
 
   const connectInstance = async (id: string) => {
     try {
+      console.log(`🔄 Iniciando conexão para instância ${id}`);
+      
       const res = await fetch(`/api/whatsapp/instances/${id}/connect`, {
         method: 'POST',
       });
 
-      if (!res.ok) throw new Error('Erro ao conectar');
+      if (!res.ok) {
+        const errorData = await res.json();
+        console.error('❌ Erro ao conectar:', errorData);
+        throw new Error(errorData.error || 'Erro ao conectar');
+      }
 
+      console.log('✅ Comando de conexão enviado com sucesso');
       toast.success('Conectando... Aguarde o QR Code');
+      
+      // Resetar estado antes de abrir o dialog
+      setCurrentQr('');
       setQrDialogOpen(true);
 
       // Poll para atualizar QR code e status
       let hasShownQrToast = false;
+      let pollCount = 0;
+      const maxPolls = 60; // 60 x 2s = 2 minutos
+      
       const interval = setInterval(async () => {
-        const statusRes = await fetch(`/api/whatsapp/instances/${id}`);
-        const statusData = await statusRes.json();
-        const instance = statusData.instance;
+        pollCount++;
+        console.log(`📡 Polling ${pollCount}/${maxPolls} para instância ${id}`);
         
-        if (!instance) return;
-        
-        // Atualizar QR code se disponível ou mudou
-        if (instance.qrCode && instance.qrCode !== currentQr) {
-          setCurrentQr(instance.qrCode);
-          if (!hasShownQrToast) {
-            toast.success('QR Code gerado! Escaneie para conectar');
-            hasShownQrToast = true;
+        try {
+          const statusRes = await fetch(`/api/whatsapp/instances/${id}`);
+          
+          if (!statusRes.ok) {
+            console.error('❌ Erro ao buscar status da instância');
+            return;
           }
-        }
-        
-        // Verificar se conectou
-        if (instance.status === 'connected') {
-          clearInterval(interval);
-          setQrDialogOpen(false);
-          setCurrentQr('');
-          toast.success('WhatsApp conectado com sucesso!');
-          fetchInstances();
+          
+          const statusData = await statusRes.json();
+          const instance = statusData.instance;
+          
+          if (!instance) {
+            console.warn('⚠️ Instância não encontrada no response');
+            return;
+          }
+          
+          console.log(`📊 Status da instância: ${instance.status}`);
+          console.log(`📱 QR Code presente: ${instance.qrCode ? 'SIM' : 'NÃO'}`);
+          
+          // Atualizar QR code se disponível ou mudou
+          if (instance.qrCode && instance.qrCode !== currentQr) {
+            console.log(`✅ Novo QR Code recebido! Tamanho: ${instance.qrCode.length} chars`);
+            console.log(`   QR Code preview: ${instance.qrCode.substring(0, 50)}...`);
+            setCurrentQr(instance.qrCode);
+            
+            if (!hasShownQrToast) {
+              toast.success('QR Code gerado! Escaneie para conectar');
+              hasShownQrToast = true;
+            }
+          }
+          
+          // Verificar se conectou
+          if (instance.status === 'connected') {
+            console.log('🎉 WhatsApp conectado com sucesso!');
+            clearInterval(interval);
+            setQrDialogOpen(false);
+            setCurrentQr('');
+            toast.success('WhatsApp conectado com sucesso!');
+            fetchInstances();
+          }
+          
+          // Timeout após max polls
+          if (pollCount >= maxPolls) {
+            console.warn('⏱️ Timeout: limite de polling atingido');
+            clearInterval(interval);
+            setQrDialogOpen(false);
+            setCurrentQr('');
+            toast.error('Tempo limite excedido. Tente novamente.');
+          }
+        } catch (pollError) {
+          console.error('❌ Erro durante polling:', pollError);
         }
       }, 2000);
 
-      // Limpar após 2 minutos
-      setTimeout(() => {
-        clearInterval(interval);
-        if (currentQr) {
-          setQrDialogOpen(false);
-          setCurrentQr('');
-          toast.error('Tempo limite excedido. Tente novamente.');
-        }
-      }, 120000);
     } catch (error) {
+      console.error('❌ Erro ao conectar instância:', error);
       toast.error('Erro ao conectar instância');
       setQrDialogOpen(false);
+      setCurrentQr('');
     }
   };
 
@@ -522,31 +560,68 @@ export function InstancesManager() {
 
       {/* QR Code Dialog */}
       <Dialog open={qrDialogOpen} onOpenChange={(open) => {
+        console.log(`🔔 QR Dialog mudou para: ${open ? 'ABERTO' : 'FECHADO'}`);
         setQrDialogOpen(open);
         if (!open) {
+          console.log('🧹 Limpando QR Code do estado');
           setCurrentQr(''); // Limpar QR code ao fechar
         }
       }}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Escaneie o QR Code</DialogTitle>
-            <DialogDescription>Abra o WhatsApp no celular e escaneie o código</DialogDescription>
+            <DialogTitle className="flex items-center gap-2">
+              <QrCode className="w-5 h-5" />
+              Escaneie o QR Code
+            </DialogTitle>
+            <DialogDescription>
+              Abra o WhatsApp no seu celular e escaneie o código abaixo
+            </DialogDescription>
           </DialogHeader>
-          <div className="flex flex-col items-center space-y-4">
+          <div className="flex flex-col items-center space-y-4 py-4">
             {currentQr ? (
-              <img src={currentQr} alt="QR Code" className="w-64 h-64 border-4 border-blue-500 rounded-lg" />
-            ) : (
-              <div className="w-64 h-64 border-4 border-dashed border-gray-300 rounded-lg flex items-center justify-center">
-                <div className="text-center text-gray-500">
-                  <Loader2 className="w-12 h-12 animate-spin mx-auto mb-2" />
-                  <p>Gerando QR Code...</p>
+              <>
+                <div className="relative">
+                  <img 
+                    src={currentQr} 
+                    alt="QR Code WhatsApp" 
+                    className="w-72 h-72 border-4 border-green-500 rounded-lg shadow-lg"
+                    onLoad={() => console.log('✅ Imagem QR Code carregada no DOM')}
+                    onError={(e) => console.error('❌ Erro ao carregar imagem QR Code:', e)}
+                  />
+                  <div className="absolute -top-2 -right-2 bg-green-500 text-white rounded-full p-2">
+                    <QrCode className="w-4 h-4" />
+                  </div>
                 </div>
-              </div>
+                <div className="bg-green-50 border border-green-200 rounded-lg p-3 w-full">
+                  <div className="flex items-center gap-2 text-sm text-green-700">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span className="font-medium">Aguardando leitura do QR Code...</span>
+                  </div>
+                  <p className="text-xs text-green-600 mt-1">
+                    Abra o WhatsApp → Menu → Aparelhos conectados → Conectar aparelho
+                  </p>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="w-72 h-72 border-4 border-dashed border-gray-300 rounded-lg flex items-center justify-center bg-gray-50">
+                  <div className="text-center text-gray-500">
+                    <Loader2 className="w-12 h-12 animate-spin mx-auto mb-3 text-blue-500" />
+                    <p className="font-medium">Gerando QR Code...</p>
+                    <p className="text-xs mt-1">Aguarde alguns segundos</p>
+                  </div>
+                </div>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 w-full">
+                  <div className="flex items-center gap-2 text-sm text-blue-700">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span className="font-medium">Conectando ao WhatsApp...</span>
+                  </div>
+                  <p className="text-xs text-blue-600 mt-1">
+                    O QR Code aparecerá em instantes
+                  </p>
+                </div>
+              </>
             )}
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="w-4 h-4 animate-spin" />
-              {currentQr ? 'Aguardando leitura do QR Code...' : 'Conectando ao WhatsApp...'}
-            </div>
           </div>
         </DialogContent>
       </Dialog>
