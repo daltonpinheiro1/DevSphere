@@ -36,7 +36,7 @@ export class WhatsAppInstanceManager {
   }
 
   /**
-   * Inicializa a conexão com WhatsApp
+   * Inicializa a conexão com WhatsApp com retry automático
    */
   async connect(
     onQrCode?: (qr: string) => void,
@@ -48,16 +48,64 @@ export class WhatsAppInstanceManager {
       return;
     }
 
-    console.log(`🔌 Iniciando conexão da instância ${this.instanceId}...`);
-    this.isConnecting = true;
     this.qrCodeCallback = onQrCode;
     this.statusCallback = onStatus;
     this.messageCallback = onMessage;
 
+    // Tentar até 3 vezes com proxies diferentes
+    const MAX_RETRIES = 3;
+    let lastError: Error | null = null;
+    
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        console.log(`\n🔌 [Tentativa ${attempt}/${MAX_RETRIES}] Iniciando conexão da instância ${this.instanceId}...`);
+        await this.connectWithProxy(attempt);
+        
+        // Se chegou aqui, conexão foi bem-sucedida
+        if (this.currentProxy?.id) {
+          await proxyPool.markProxyAsSuccessful(this.currentProxy.id);
+        }
+        return;
+      } catch (error: any) {
+        lastError = error;
+        console.error(`❌ [Tentativa ${attempt}/${MAX_RETRIES}] Falhou:`, error.message);
+
+        // Se o proxy falhou, marcar como falho
+        if (this.currentProxy?.id) {
+          await proxyPool.markProxyAsFailed(this.currentProxy.id, error.message);
+        }
+
+        // Se não é a última tentativa, aguardar e tentar com outro proxy
+        if (attempt < MAX_RETRIES) {
+          console.log(`⏳ Aguardando 5s antes da próxima tentativa...`);
+          await new Promise(resolve => setTimeout(resolve, 5000));
+          
+          // Limpar sessão corrompida
+          await this.clearSession();
+          console.log(`🗑️  Sessão corrompida limpa. Preparando nova tentativa...`);
+        }
+      }
+    }
+
+    // Se todas as tentativas falharam
+    this.isConnecting = false;
+    await this.updateStatus('error');
+    console.error(`\n❌ Todas as ${MAX_RETRIES} tentativas falharam. Última erro:`, lastError);
+    throw new Error(`Falha ao conectar após ${MAX_RETRIES} tentativas. Use proxies diferentes.`);
+  }
+
+  /**
+   * Conecta com um proxy específico
+   */
+  private async connectWithProxy(attempt: number): Promise<void> {
+    this.isConnecting = true;
+
     try {
       // Aguardar um pouco antes de conectar (evitar rate limiting)
-      console.log(`⏳ Aguardando 3s antes de iniciar conexão...`);
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      if (attempt > 1) {
+        console.log(`⏳ Aguardando 3s antes de iniciar conexão...`);
+        await new Promise(resolve => setTimeout(resolve, 3000));
+      }
       
       // Limpar QR code antigo no banco de dados
       console.log(`🧹 Limpando QR code antigo da instância ${this.instanceId}...`);
@@ -70,18 +118,6 @@ export class WhatsAppInstanceManager {
       if (!fs.existsSync(this.sessionPath)) {
         console.log(`📁 Criando diretório de sessão: ${this.sessionPath}`);
         fs.mkdirSync(this.sessionPath, { recursive: true });
-      } else {
-        // Se já existe e vamos fazer nova conexão, limpar arquivos corrompidos
-        console.log(`🗑️  Limpando sessão antiga para instância ${this.instanceId}`);
-        try {
-          const files = fs.readdirSync(this.sessionPath);
-          for (const file of files) {
-            fs.unlinkSync(path.join(this.sessionPath, file));
-          }
-          console.log(`✅ ${files.length} arquivos de sessão removidos`);
-        } catch (cleanError) {
-          console.error('❌ Erro ao limpar sessão:', cleanError);
-        }
       }
 
       // Autenticação multi-arquivo
@@ -90,9 +126,10 @@ export class WhatsAppInstanceManager {
         this.sessionPath
       );
 
-      // Obter proxy rotativo do pool
+      // Obter proxy rotativo do pool (excluindo o que falhou antes)
+      const excludeProxyId = attempt > 1 ? this.currentProxy?.id : undefined;
       console.log(`🔄 Obtendo proxy rotativo do pool...`);
-      this.currentProxy = proxyPool.getNextProxy();
+      this.currentProxy = proxyPool.getNextProxy(excludeProxyId);
       
       if (this.currentProxy) {
         console.log(`✅ Usando proxy: ${this.currentProxy.host}:${this.currentProxy.port} (${this.currentProxy.country || 'N/A'})`);
@@ -228,20 +265,23 @@ export class WhatsAppInstanceManager {
           console.log(`   ⚠️  Erro 401: Sessão inválida ou expirada. Limpando sessão...`);
           await this.clearSession();
           await this.updateStatus('disconnected');
-          return;
+          
+          // Lançar erro para trigger retry automático
+          throw new Error('Erro 401: Sessão inválida ou expirada');
         }
         
         if (statusCode === 405) {
-          console.log(`   ⚠️  Erro 405: WhatsApp bloqueou a conexão.`);
+          console.log(`   ⚠️  Erro 405: WhatsApp bloqueou a conexão (proxy ou IP banido).`);
           console.log(`   ℹ️  Isso pode acontecer por:`);
+          console.log(`      - Proxy bloqueado pelo WhatsApp`);
           console.log(`      - Rate limiting (muitas tentativas)`);
-          console.log(`      - Região/IP bloqueado temporariamente`);
-          console.log(`      - Configuração do navegador detectada`);
-          console.log(`   💡 Dica: Aguarde 1-2 minutos e tente novamente`);
+          console.log(`      - IP residencial suspeito`);
+          console.log(`   🔄 Sistema vai tentar com outro proxy automaticamente...`);
           await this.clearSession(); // Limpar sessão corrompida
           await this.updateStatus('disconnected');
-          // NÃO reconectar automaticamente no erro 405 - deixar o usuário tentar manualmente
-          return;
+          
+          // Lançar erro para trigger retry automático com outro proxy
+          throw new Error('Erro 405: IP/Proxy bloqueado pelo WhatsApp');
         }
         
         if (statusCode === 408 || statusCode === 428) {

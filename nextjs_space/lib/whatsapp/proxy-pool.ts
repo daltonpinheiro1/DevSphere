@@ -172,10 +172,11 @@ class ProxyPool {
 
   /**
    * Obtém próximo proxy disponível (rotação round-robin)
+   * @param excludeProxyId - ID do proxy a ser excluído (usado em fallback)
    */
-  getNextProxy(): ProxyConfig | null {
+  getNextProxy(excludeProxyId?: string): ProxyConfig | null {
     const activeProxies = Array.from(this.proxies.values())
-      .filter(p => p.status === 'active')
+      .filter(p => p.status === 'active' && p.id !== excludeProxyId) // Exclui proxy que falhou
       .sort((a, b) => (a.responseTime || 9999) - (b.responseTime || 9999));
 
     if (activeProxies.length === 0) {
@@ -189,6 +190,76 @@ class ProxyPool {
 
     console.log(`🔄 [ProxyPool] Usando proxy: ${proxy.host}:${proxy.port} (${proxy.country || 'N/A'})`);
     return proxy;
+  }
+
+  /**
+   * Marca proxy como falho e reduz taxa de sucesso
+   */
+  async markProxyAsFailed(proxyId: string, reason: string = 'Conexão falhou'): Promise<void> {
+    const proxy = this.proxies.get(proxyId);
+    if (!proxy) {
+      console.warn(`⚠️ [ProxyPool] Proxy ${proxyId} não encontrado para marcar como falho`);
+      return;
+    }
+
+    console.log(`❌ [ProxyPool] Marcando proxy ${proxy.country} como falho: ${reason}`);
+
+    // Reduz taxa de sucesso drasticamente
+    const newSuccessRate = Math.max(0, (proxy.successRate || 50) - 30);
+    
+    // Se taxa cair abaixo de 20%, marca como inativo
+    const newStatus = newSuccessRate < 20 ? 'inactive' : 'active';
+
+    try {
+      await prisma.proxyServer.update({
+        where: { id: proxyId },
+        data: {
+          status: newStatus,
+          successRate: newSuccessRate,
+          lastChecked: new Date()
+        }
+      });
+
+      // Atualiza cache local
+      proxy.status = newStatus;
+      proxy.successRate = newSuccessRate;
+      proxy.lastChecked = new Date();
+
+      console.log(`📊 [ProxyPool] Proxy ${proxy.country}: taxa de sucesso ${newSuccessRate}%, status: ${newStatus}`);
+    } catch (error) {
+      console.error(`❌ [ProxyPool] Erro ao atualizar status do proxy:`, error);
+    }
+  }
+
+  /**
+   * Marca proxy como bem-sucedido e aumenta taxa de sucesso
+   */
+  async markProxyAsSuccessful(proxyId: string): Promise<void> {
+    const proxy = this.proxies.get(proxyId);
+    if (!proxy) return;
+
+    console.log(`✅ [ProxyPool] Proxy ${proxy.country} funcionou com sucesso`);
+
+    // Aumenta taxa de sucesso
+    const newSuccessRate = Math.min(100, (proxy.successRate || 50) + 10);
+
+    try {
+      await prisma.proxyServer.update({
+        where: { id: proxyId },
+        data: {
+          status: 'active',
+          successRate: newSuccessRate,
+          lastChecked: new Date()
+        }
+      });
+
+      // Atualiza cache local
+      proxy.status = 'active';
+      proxy.successRate = newSuccessRate;
+      proxy.lastChecked = new Date();
+    } catch (error) {
+      console.error(`❌ [ProxyPool] Erro ao atualizar status do proxy:`, error);
+    }
   }
 
   /**
