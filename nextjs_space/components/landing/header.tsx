@@ -55,7 +55,7 @@ export function Header() {
             </Link>
             <Link href="/chat">
               <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg">
-                Chat Centermed
+                Chat DevSphere
               </Button>
             </Link>
           </nav>
@@ -94,7 +94,7 @@ export function Header() {
               </Link>
               <Link href="/chat">
                 <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg w-full">
-                  Chat Centermed
+                  Chat DevSphere
                 </Button>
               </Link>
             </div>
