@@ -101,28 +101,49 @@ export function InstancesManager() {
 
       if (!res.ok) throw new Error('Erro ao conectar');
 
-      const data = await res.json();
-      setCurrentQr(data.qrCode);
+      toast.success('Conectando... Aguarde o QR Code');
       setQrDialogOpen(true);
-      toast.success('QR Code gerado! Escaneie para conectar');
 
-      // Poll para atualizar status
+      // Poll para atualizar QR code e status
+      let hasShownQrToast = false;
       const interval = setInterval(async () => {
         const statusRes = await fetch(`/api/whatsapp/instances/${id}`);
         const statusData = await statusRes.json();
+        const instance = statusData.instance;
         
-        if (statusData.status === 'connected') {
+        if (!instance) return;
+        
+        // Atualizar QR code se disponível ou mudou
+        if (instance.qrCode && instance.qrCode !== currentQr) {
+          setCurrentQr(instance.qrCode);
+          if (!hasShownQrToast) {
+            toast.success('QR Code gerado! Escaneie para conectar');
+            hasShownQrToast = true;
+          }
+        }
+        
+        // Verificar se conectou
+        if (instance.status === 'connected') {
           clearInterval(interval);
           setQrDialogOpen(false);
+          setCurrentQr('');
           toast.success('WhatsApp conectado com sucesso!');
           fetchInstances();
         }
       }, 2000);
 
       // Limpar após 2 minutos
-      setTimeout(() => clearInterval(interval), 120000);
+      setTimeout(() => {
+        clearInterval(interval);
+        if (currentQr) {
+          setQrDialogOpen(false);
+          setCurrentQr('');
+          toast.error('Tempo limite excedido. Tente novamente.');
+        }
+      }, 120000);
     } catch (error) {
       toast.error('Erro ao conectar instância');
+      setQrDialogOpen(false);
     }
   };
 
@@ -500,19 +521,31 @@ export function InstancesManager() {
       </Card>
 
       {/* QR Code Dialog */}
-      <Dialog open={qrDialogOpen} onOpenChange={setQrDialogOpen}>
+      <Dialog open={qrDialogOpen} onOpenChange={(open) => {
+        setQrDialogOpen(open);
+        if (!open) {
+          setCurrentQr(''); // Limpar QR code ao fechar
+        }
+      }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Escaneie o QR Code</DialogTitle>
             <DialogDescription>Abra o WhatsApp no celular e escaneie o código</DialogDescription>
           </DialogHeader>
           <div className="flex flex-col items-center space-y-4">
-            {currentQr && (
+            {currentQr ? (
               <img src={currentQr} alt="QR Code" className="w-64 h-64 border-4 border-blue-500 rounded-lg" />
+            ) : (
+              <div className="w-64 h-64 border-4 border-dashed border-gray-300 rounded-lg flex items-center justify-center">
+                <div className="text-center text-gray-500">
+                  <Loader2 className="w-12 h-12 animate-spin mx-auto mb-2" />
+                  <p>Gerando QR Code...</p>
+                </div>
+              </div>
             )}
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="w-4 h-4 animate-spin" />
-              Aguardando leitura do QR Code...
+              {currentQr ? 'Aguardando leitura do QR Code...' : 'Conectando ao WhatsApp...'}
             </div>
           </div>
         </DialogContent>

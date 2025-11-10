@@ -11,6 +11,7 @@ import { Boom } from '@hapi/boom';
 import * as fs from 'fs';
 import * as path from 'path';
 import pino from 'pino';
+import QRCode from 'qrcode';
 import { prisma } from '../db';
 
 export class WhatsAppInstanceManager {
@@ -50,9 +51,26 @@ export class WhatsAppInstanceManager {
     this.messageCallback = onMessage;
 
     try {
+      // Limpar QR code antigo no banco de dados
+      await prisma.whatsAppInstance.update({
+        where: { id: this.instanceId },
+        data: { qrCode: null },
+      });
+
       // Criar diretório de sessão se não existir
       if (!fs.existsSync(this.sessionPath)) {
         fs.mkdirSync(this.sessionPath, { recursive: true });
+      } else {
+        // Se já existe e vamos fazer nova conexão, limpar arquivos corrompidos
+        console.log(`Limpando sessão antiga para instância ${this.instanceId}`);
+        try {
+          const files = fs.readdirSync(this.sessionPath);
+          for (const file of files) {
+            fs.unlinkSync(path.join(this.sessionPath, file));
+          }
+        } catch (cleanError) {
+          console.error('Erro ao limpar sessão:', cleanError);
+        }
       }
 
       // Autenticação multi-arquivo
@@ -385,10 +403,15 @@ export class WhatsAppInstanceManager {
    */
   private async updateQRCode(qr: string): Promise<void> {
     try {
+      // Converter QR code texto para Data URL (imagem base64)
+      const qrDataUrl = await QRCode.toDataURL(qr);
+      
       await prisma.whatsAppInstance.update({
         where: { id: this.instanceId },
-        data: { qrCode: qr },
+        data: { qrCode: qrDataUrl },
       });
+      
+      console.log(`QR Code convertido e salvo para instância ${this.instanceId}`);
     } catch (error) {
       console.error(`Erro ao atualizar QR code:`, error);
     }
