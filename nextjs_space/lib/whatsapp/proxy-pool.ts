@@ -56,11 +56,7 @@ class ProxyPool {
   async loadProxiesFromDB() {
     try {
       const dbProxies = await prisma.proxyServer.findMany({
-        where: { 
-          status: {
-            in: ['active', 'testing']  // Carregar proxies ativos e em teste
-          }
-        }
+        // Carrega TODOS os proxies (ativos, inativos e em teste) para permitir testes
       });
 
       for (const proxy of dbProxies) {
