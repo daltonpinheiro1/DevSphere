@@ -7,6 +7,8 @@
 import { PrismaClient } from '@prisma/client';
 import https from 'https';
 import http from 'http';
+import { HttpsProxyAgent } from 'https-proxy-agent';
+import { HttpProxyAgent } from 'http-proxy-agent';
 
 const prisma = new PrismaClient();
 
@@ -46,8 +48,19 @@ class ProxyPool {
   private currentIndex = 0;
   private healthCheckInterval: NodeJS.Timeout | null = null;
 
+  private initialized = false;
+
   constructor() {
-    this.loadProxiesFromDB();
+    // Não chama loadProxiesFromDB aqui pois é async
+  }
+
+  /**
+   * Inicializa o pool carregando proxies do banco
+   */
+  async init() {
+    if (this.initialized) return;
+    await this.loadProxiesFromDB();
+    this.initialized = true;
   }
 
   /**
@@ -170,7 +183,8 @@ class ProxyPool {
    * Obtém próximo proxy disponível (rotação round-robin)
    * @param excludeProxyId - ID do proxy a ser excluído (usado em fallback)
    */
-  getNextProxy(excludeProxyId?: string): ProxyConfig | null {
+  async getNextProxy(excludeProxyId?: string): Promise<ProxyConfig | null> {
+    await this.init(); // Garante que as proxies foram carregadas
     const activeProxies = Array.from(this.proxies.values())
       .filter(p => p.status === 'active' && p.id !== excludeProxyId) // Exclui proxy que falhou
       .sort((a, b) => (a.responseTime || 9999) - (b.responseTime || 9999));
@@ -276,6 +290,7 @@ class ProxyPool {
    * Testa todos os proxies e retorna estatísticas
    */
   async testAllProxies(): Promise<{ active: number; inactive: number; results: ProxyConfig[] }> {
+    await this.init(); // Garante que as proxies foram carregadas
     const allProxies = this.getAllProxies();
     const results: ProxyConfig[] = [];
     let active = 0;
@@ -356,37 +371,49 @@ class ProxyPool {
    */
   private testProxyConnection(proxy: ProxyConfig): Promise<boolean> {
     return new Promise((resolve) => {
-      const headers: Record<string, string> = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0'
-      };
+      try {
+        // Constrói URL do proxy com autenticação
+        const proxyUrl = proxy.username && proxy.password
+          ? `${proxy.protocol}://${proxy.username}:${proxy.password}@${proxy.host}:${proxy.port}`
+          : `${proxy.protocol}://${proxy.host}:${proxy.port}`;
 
-      // Adiciona autenticação se necessário
-      if (proxy.username && proxy.password) {
-        const auth = Buffer.from(`${proxy.username}:${proxy.password}`).toString('base64');
-        headers['Proxy-Authorization'] = `Basic ${auth}`;
-      }
+        // Cria agent apropriado para o protocolo
+        const agent = proxy.protocol === 'https' 
+          ? new HttpsProxyAgent(proxyUrl)
+          : new HttpProxyAgent(proxyUrl);
 
-      const options = {
-        method: 'GET',
-        host: proxy.host,
-        port: proxy.port,
-        path: 'https://www.google.com',
-        timeout: 10000,
-        headers
-      };
+        // Faz requisição através do proxy
+        const options = {
+          method: 'GET',
+          agent,
+          timeout: 15000,
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0'
+          }
+        };
 
-      const client = proxy.protocol === 'https' ? https : http;
-      const req = client.request(options, (res) => {
-        resolve(res.statusCode === 200 || res.statusCode === 301 || res.statusCode === 302);
-      });
+        const req = https.request('https://www.google.com', options, (res) => {
+          const success = res.statusCode === 200 || res.statusCode === 301 || res.statusCode === 302;
+          console.log(`🔍 [ProxyTest] ${proxy.host}:${proxy.port} - Status: ${res.statusCode} - ${success ? 'OK' : 'FALHOU'}`);
+          resolve(success);
+        });
 
-      req.on('error', () => resolve(false));
-      req.on('timeout', () => {
-        req.destroy();
+        req.on('error', (error) => {
+          console.error(`❌ [ProxyTest] Erro ao testar ${proxy.host}:${proxy.port}:`, error.message);
+          resolve(false);
+        });
+
+        req.on('timeout', () => {
+          console.error(`⏱️ [ProxyTest] Timeout ao testar ${proxy.host}:${proxy.port}`);
+          req.destroy();
+          resolve(false);
+        });
+
+        req.end();
+      } catch (error: any) {
+        console.error(`❌ [ProxyTest] Exceção ao testar ${proxy.host}:${proxy.port}:`, error.message);
         resolve(false);
-      });
-
-      req.end();
+      }
     });
   }
 
@@ -425,6 +452,7 @@ class ProxyPool {
    * Verifica se há proxies disponíveis (VALIDAÇÃO OBRIGATÓRIA)
    */
   async hasAvailableProxies(): Promise<boolean> {
+    await this.init(); // Garante que as proxies foram carregadas
     const activeProxies = Array.from(this.proxies.values())
       .filter(p => p.status === 'active');
     
@@ -469,7 +497,8 @@ class ProxyPool {
   /**
    * Obtém melhor proxy disponível (exclui proxies específicos)
    */
-  getBestProxy(excludeIds: string[] = []): ProxyConfig | null {
+  async getBestProxy(excludeIds: string[] = []): Promise<ProxyConfig | null> {
+    await this.init(); // Garante que as proxies foram carregadas
     const activeProxies = Array.from(this.proxies.values())
       .filter(p => p.status === 'active' && !excludeIds.includes(p.id || ''))
       .sort((a, b) => {

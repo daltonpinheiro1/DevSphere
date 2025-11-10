@@ -159,7 +159,7 @@ export class WhatsAppInstanceManager {
         console.log(`   Excluindo ${excludeProxyIds.length} proxies que falharam anteriormente`);
       }
       
-      this.currentProxy = proxyPool.getBestProxy(excludeProxyIds);
+      this.currentProxy = await proxyPool.getBestProxy(excludeProxyIds);
       
       if (!this.currentProxy) {
         const errorMsg = `❌ FALHA CRÍTICA: Nenhum proxy disponível para tentativa ${attempt}. Configure mais proxies ou aguarde a recuperação dos existentes.`;
