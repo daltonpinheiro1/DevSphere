@@ -1,12 +1,12 @@
 generator client {
-  provider      = "prisma-client-js"
-  output        = "/home/ubuntu/center_ai_omni/nextjs_space/node_modules/.prisma/client"
-  binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
+    provider = "prisma-client-js"
+    binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
+    output = "/home/ubuntu/center_ai_omni/nextjs_space/node_modules/.prisma/client"
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
 }
 
 model campaign_messages {
@@ -49,13 +49,28 @@ model campaigns {
 }
 
 model chatbots {
+  id                  String                @id
+  name                String
+  description         String?
+  system_prompt       String
+  is_active           Boolean               @default(true)
+  created_at          DateTime              @default(now())
+  updated_at          DateTime
+  training_files      chatbot_training_files[]
+  whatsapp_instances  whatsapp_instances[]
+}
+
+model chatbot_training_files {
   id            String   @id
-  name          String
-  description   String?
-  system_prompt String
-  is_active     Boolean  @default(true)
-  created_at    DateTime @default(now())
-  updated_at    DateTime
+  chatbot_id    String
+  file_name     String
+  file_url      String
+  file_size     Int
+  file_type     String
+  uploaded_at   DateTime @default(now())
+  chatbots      chatbots @relation(fields: [chatbot_id], references: [id], onDelete: Cascade)
+  
+  @@index([chatbot_id])
 }
 
 model contacts {
@@ -82,18 +97,20 @@ model conversations {
 }
 
 model message_templates {
-  id         String      @id
-  name       String
-  content    String
-  variables  String[]    @default([])
-  company_id String?
-  created_by String?
-  created_at DateTime    @default(now())
-  updated_at DateTime
-  media_name String?
-  media_type String?
-  media_url  String?
-  campaigns  campaigns[]
+  id              String      @id
+  name            String
+  content         String
+  variables       String[]    @default([])
+  company_id      String?
+  created_by      String?
+  created_at      DateTime    @default(now())
+  updated_at      DateTime
+  media_name      String?
+  media_type      String?
+  media_url       String?
+  custom_prompt   String?
+  enable_sales_flow Boolean   @default(false)
+  campaigns       campaigns[]
 }
 
 model messages {
@@ -223,6 +240,9 @@ model whatsapp_instances {
   total_messages_sent   Int                 @default(0)
   campaigns             campaigns[]
   whatsapp_messages     whatsapp_messages[]
+  chatbots              chatbots?           @relation(fields: [chatbot_id], references: [id])
+  
+  @@index([chatbot_id])
 }
 
 model whatsapp_messages {
@@ -238,6 +258,63 @@ model whatsapp_messages {
   whatsapp_instances whatsapp_instances @relation(fields: [instance_id], references: [id], onDelete: Cascade)
 
   @@unique([instance_id, message_id])
+}
+
+model tim_sales_leads {
+  id                    String    @id
+  instance_id           String
+  contact_phone         String
+  contact_name          String?
+  
+  // Fluxo de vendas
+  flow_stage            String    @default("initial")
+  
+  // Dados de viabilidade
+  cep                   String?
+  address_number        String?
+  viability_checked     Boolean   @default(false)
+  is_viable             Boolean   @default(false)
+  viability_response    Json?
+  
+  // Endereço completo
+  street                String?
+  neighborhood          String?
+  city                  String?
+  state                 String?
+  complement            String?
+  reference             String?
+  geolocation_lat       Float?
+  geolocation_lng       Float?
+  
+  // Dados pessoais
+  full_name             String?
+  cpf                   String?
+  rg                    String?
+  birth_date            DateTime?
+  email                 String?
+  alternative_phone     String?
+  
+  // Plano escolhido
+  selected_plan_type    String?
+  selected_plan_name    String?
+  plan_price            Float?
+  
+  // Autorização e fechamento
+  authorization_given   Boolean   @default(false)
+  authorization_date    DateTime?
+  authorization_text    String?
+  
+  // Metadados
+  created_at            DateTime  @default(now())
+  updated_at            DateTime
+  completed_at          DateTime?
+  notes                 String?
+  conversation_history  Json?
+  
+  @@index([instance_id])
+  @@index([contact_phone])
+  @@index([flow_stage])
+  @@index([created_at])
 }
 
 enum ConversationStatus {

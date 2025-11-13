@@ -2,6 +2,10 @@
 import { WebhookMessage } from './types';
 import { baileysService } from './baileys-service';
 import { prisma } from '../db';
+import { conversationCache } from './conversation-cache';
+import { timSalesFlow } from './tim-sales-flow';
+import { getCache, setCache } from '../redis';
+import crypto from 'crypto';
 
 /**
  * Handler para respostas automáticas usando o chatbot
@@ -12,9 +16,16 @@ export class AutoReplyHandler {
    */
   async handleMessage(message: WebhookMessage): Promise<void> {
     try {
-      // Buscar instância
-      const instance = await prisma.whatsAppInstance.findUnique({
+      // Buscar instância com chatbot
+      const instance = await prisma.whatsapp_instances.findUnique({
         where: { id: message.instanceId },
+        include: {
+          chatbots: {
+            include: {
+              training_files: true,
+            },
+          },
+        },
       });
 
       if (!instance) {
@@ -23,21 +34,63 @@ export class AutoReplyHandler {
       }
 
       // Verificar se auto-reply está ativo
-      if (!instance.autoReply) {
+      if (!instance.auto_reply) {
         console.log(`Auto-reply desativado para instância ${message.instanceId}`);
         return;
       }
 
-      // Obter resposta do chatbot
-      const botResponse = await this.getChatbotResponse(
-        message.message,
-        instance.chatbotId || undefined
+      // Salvar mensagem do usuário no cache
+      await conversationCache.addMessage(
+        message.instanceId,
+        message.from,
+        'user',
+        message.message
       );
+
+      // Verificar se há fluxo de vendas ativo
+      const hasActiveSalesFlow = await this.checkActiveSalesFlow(
+        message.instanceId,
+        message.from
+      );
+
+      let botResponse: string | null = null;
+
+      if (hasActiveSalesFlow) {
+        // Processar fluxo de vendas TIM
+        const flowResponse = await timSalesFlow.handleMessage(
+          message.instanceId,
+          message.from,
+          message.message
+        );
+
+        botResponse = flowResponse.message;
+
+        // Enviar botão se necessário
+        if (flowResponse.shouldSendButton && flowResponse.buttonText) {
+          // TODO: Implementar envio de botão interativo
+        }
+      } else {
+        // Obter resposta do chatbot normal
+        botResponse = await this.getChatbotResponse(
+          message.message,
+          message.instanceId,
+          message.from,
+          instance.chatbots || undefined
+        );
+      }
 
       if (!botResponse) {
         console.log('Nenhuma resposta gerada pelo chatbot');
         return;
       }
+
+      // Salvar resposta do bot no cache
+      await conversationCache.addMessage(
+        message.instanceId,
+        message.from,
+        'assistant',
+        botResponse
+      );
 
       // Enviar resposta
       await baileysService.sendMessage({
@@ -55,15 +108,75 @@ export class AutoReplyHandler {
   }
 
   /**
+   * Verifica se há fluxo de vendas ativo para o contato
+   */
+  private async checkActiveSalesFlow(
+    instanceId: string,
+    contactPhone: string
+  ): Promise<boolean> {
+    try {
+      const activeLead = await prisma.tim_sales_leads.findFirst({
+        where: {
+          instance_id: instanceId,
+          contact_phone: contactPhone,
+          flow_stage: {
+            notIn: ['completed', 'cancelled'],
+          },
+        },
+      });
+
+      return !!activeLead;
+    } catch (error) {
+      console.error('Erro ao verificar fluxo de vendas:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Gera hash de mensagem para cache
+   */
+  private generateMessageHash(message: string): string {
+    return crypto.createHash('md5').update(message.toLowerCase().trim()).digest('hex');
+  }
+
+  /**
+   * Verifica cache de respostas similares
+   */
+  private async getCachedSimilarResponse(message: string): Promise<string | null> {
+    const messageHash = this.generateMessageHash(message);
+    const cacheKey = `response:${messageHash}`;
+    return await getCache<string>(cacheKey);
+  }
+
+  /**
+   * Salva resposta no cache
+   */
+  private async cacheResponse(message: string, response: string): Promise<void> {
+    const messageHash = this.generateMessageHash(message);
+    const cacheKey = `response:${messageHash}`;
+    // Cache de 4-6 horas (usando 5 horas como média)
+    await setCache(cacheKey, response, 18000); // 5 horas
+  }
+
+  /**
    * Obtém resposta do chatbot (integração com API de chat existente)
    */
   private async getChatbotResponse(
     message: string,
-    chatbotId?: string
+    instanceId: string,
+    contactPhone: string,
+    chatbot?: any
   ): Promise<string | null> {
     try {
+      // Verificar cache de respostas similares
+      const cachedResponse = await this.getCachedSimilarResponse(message);
+      if (cachedResponse) {
+        console.log('✅ Resposta encontrada no cache (economia de tokens)');
+        return cachedResponse;
+      }
+
       // Buscar system prompt do chatbot no banco
-      let systemPrompt = `Você é o assistente virtual oficial da Centermed, especializado em atendimento ao cliente sobre o Clube de Serviços da Centermed.
+      let systemPrompt = `Você é o assistente virtual oficial da DevSphere.ai, especializado em atendimento ao cliente sobre o Clube de Serviços.
 
 **SOBRE A CENTERMED:**
 A Centermed é uma empresa de serviços de saúde e telecomunicações que oferece soluções completas para seus clientes através do Clube de Serviços.
@@ -114,21 +227,44 @@ Atendemos em todo o Brasil com instalação em até 48 horas.
 
 Responda sempre em português brasileiro de forma natural e amigável. Mantenha respostas concisas (máximo 3 parágrafos).`;
 
-      // Se chatbotId foi fornecido, buscar do banco
-      if (chatbotId) {
-        try {
-          const chatbot = await prisma.chatbots.findUnique({
-            where: { id: chatbotId, is_active: true },
-          });
-          
-          if (chatbot?.system_prompt) {
-            systemPrompt = chatbot.system_prompt;
-            console.log(`✅ Usando chatbot personalizado: ${chatbot.name}`);
-          }
-        } catch (error) {
-          console.error('Erro ao buscar chatbot, usando prompt padrão:', error);
+      // Se chatbot foi fornecido, usar o prompt personalizado
+      if (chatbot?.system_prompt) {
+        systemPrompt = chatbot.system_prompt;
+        console.log(`✅ Usando chatbot personalizado: ${chatbot.name}`);
+
+        // Adicionar contexto dos arquivos de treinamento se houver
+        if (chatbot.training_files && chatbot.training_files.length > 0) {
+          systemPrompt += `\n\n**ARQUIVOS DE TREINAMENTO:**\nVocê foi treinado com ${chatbot.training_files.length} arquivo(s) adicional(is) com informações específicas. Use esse conhecimento para fornecer respostas mais precisas.`;
         }
       }
+
+      // Buscar contexto da conversa no cache
+      const conversationContext = await conversationCache.buildContextForAI(
+        instanceId,
+        contactPhone
+      );
+
+      // Construir mensagens com contexto
+      const messages: any[] = [
+        {
+          role: 'system',
+          content: systemPrompt,
+        },
+      ];
+
+      // Adicionar contexto da conversa se houver
+      if (conversationContext) {
+        messages.push({
+          role: 'system',
+          content: `**CONTEXTO DA CONVERSA:**\n${conversationContext}`,
+        });
+      }
+
+      // Adicionar mensagem atual do usuário
+      messages.push({
+        role: 'user',
+        content: message,
+      });
 
       // Chamar API de chat interna
       const apiUrl = process.env.ABACUSAI_API_URL || 'https://apis.abacus.ai';
@@ -146,16 +282,7 @@ Responda sempre em português brasileiro de forma natural e amigável. Mantenha 
           Authorization: `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
-          messages: [
-            {
-              role: 'system',
-              content: systemPrompt,
-            },
-            {
-              role: 'user',
-              content: message,
-            },
-          ],
+          messages,
           model: 'gpt-4o-mini',
           stream: false,
           max_tokens: 500,
@@ -169,6 +296,11 @@ Responda sempre em português brasileiro de forma natural e amigável. Mantenha 
 
       const data = await response.json();
       const botMessage = data.choices?.[0]?.message?.content;
+
+      // Salvar resposta no cache para futuras perguntas similares
+      if (botMessage) {
+        await this.cacheResponse(message, botMessage);
+      }
 
       return botMessage || null;
     } catch (error) {

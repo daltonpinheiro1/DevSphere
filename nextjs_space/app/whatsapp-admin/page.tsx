@@ -9,6 +9,13 @@ import TemplatesManager from '@/components/whatsapp/templates-manager';
 import CampaignsManager from '@/components/whatsapp/campaigns-manager';
 import ContactsManager from '@/components/whatsapp/contacts-manager';
 import ProxiesManager from '@/components/whatsapp/proxies-manager';
+import { ChatbotsManager } from '@/components/whatsapp/chatbots-manager';
+import dynamic from 'next/dynamic';
+
+// Carregar componente de leads dinamicamente
+const SalesLeadsManager = dynamic(() => import('@/components/whatsapp/sales-leads-manager'), {
+  ssr: false,
+});
 
 export default function WhatsAppAdminPage() {
   return (
@@ -57,12 +64,15 @@ export default function WhatsAppAdminPage() {
         </div>
 
         <Tabs defaultValue="instances" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5 bg-white/80 backdrop-blur-sm shadow-lg">
+          <TabsList className="grid w-full grid-cols-7 bg-white/80 backdrop-blur-sm shadow-lg">
             <TabsTrigger value="instances" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-purple-600 data-[state=active]:text-white">
-              📱 Números/Instâncias
+              📱 Instâncias
             </TabsTrigger>
             <TabsTrigger value="proxies" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-purple-600 data-[state=active]:text-white">
               🌐 Proxies
+            </TabsTrigger>
+            <TabsTrigger value="chatbots" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-pink-600 data-[state=active]:text-white">
+              🤖 Chatbots
             </TabsTrigger>
             <TabsTrigger value="templates" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-purple-600 data-[state=active]:text-white">
               📝 Templates
@@ -73,6 +83,9 @@ export default function WhatsAppAdminPage() {
             <TabsTrigger value="campaigns" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-purple-600 data-[state=active]:text-white">
               🚀 Campanhas
             </TabsTrigger>
+            <TabsTrigger value="leads" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-red-500 data-[state=active]:text-white">
+              💰 Leads/Vendas
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="instances">
@@ -81,6 +94,10 @@ export default function WhatsAppAdminPage() {
 
           <TabsContent value="proxies">
             <ProxiesManager />
+          </TabsContent>
+
+          <TabsContent value="chatbots">
+            <ChatbotsManager />
           </TabsContent>
 
           <TabsContent value="templates">
@@ -93,6 +110,10 @@ export default function WhatsAppAdminPage() {
 
           <TabsContent value="campaigns">
             <CampaignsManager />
+          </TabsContent>
+
+          <TabsContent value="leads">
+            <SalesLeadsManager />
           </TabsContent>
         </Tabs>
       </div>

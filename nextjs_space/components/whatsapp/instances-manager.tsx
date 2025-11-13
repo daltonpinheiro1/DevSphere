@@ -12,7 +12,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Loader2, Plus, Power, PowerOff, Trash2, QrCode, Settings, Pause, Play, RefreshCw } from 'lucide-react';
+import { Loader2, Plus, Power, PowerOff, Trash2, QrCode, Settings, Pause, Play, RefreshCw, ShoppingCart } from 'lucide-react';
 import Image from 'next/image';
 
 interface WhatsAppInstance {
@@ -308,6 +308,38 @@ export function InstancesManager() {
       fetchInstances();
     } catch (error) {
       toast.error('Erro ao atualizar status ativo');
+    }
+  };
+
+  const startSalesFlow = async (instanceId: string, contactPhone: string) => {
+    try {
+      toast.loading('Iniciando fluxo de vendas...');
+      
+      const res = await fetch('/api/whatsapp/sales-flow/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          instanceId,
+          contactPhone,
+        }),
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Erro ao iniciar fluxo de vendas');
+      }
+
+      const data = await res.json();
+      
+      toast.dismiss();
+      toast.success('🎉 Fluxo de vendas iniciado com sucesso!');
+      toast.info(`📱 Mensagem enviada para ${contactPhone}`);
+      
+      console.log('Fluxo iniciado:', data);
+    } catch (error: any) {
+      toast.dismiss();
+      toast.error(error.message || 'Erro ao iniciar fluxo de vendas');
+      console.error('Erro ao iniciar fluxo:', error);
     }
   };
 
@@ -668,6 +700,23 @@ export function InstancesManager() {
                         <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>
+
+                    {/* Botão Adquira Já! */}
+                    {instance.status === 'connected' && instance.phoneNumber && (
+                      <div className="mt-3 pt-3 border-t">
+                        <Button
+                          size="sm"
+                          onClick={() => startSalesFlow(instance.id, instance.phoneNumber!)}
+                          className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600"
+                        >
+                          <ShoppingCart className="w-4 h-4 mr-2" />
+                          🎁 Adquira já!
+                        </Button>
+                        <p className="text-xs text-muted-foreground text-center mt-1">
+                          Iniciar fluxo de vendas TIM
+                        </p>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               ))

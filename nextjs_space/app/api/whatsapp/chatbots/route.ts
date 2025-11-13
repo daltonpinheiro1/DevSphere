@@ -41,10 +41,13 @@ export async function POST(req: NextRequest) {
 
     const chatbot = await prisma.chatbots.create({
       data: {
+        id: `chatbot_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         name,
         description: description || null,
         system_prompt,
         is_active: true,
+        created_at: new Date(),
+        updated_at: new Date(),
       },
     });
 
