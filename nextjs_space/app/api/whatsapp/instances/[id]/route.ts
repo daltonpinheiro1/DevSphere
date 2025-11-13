@@ -46,7 +46,7 @@ export async function PATCH(
 ) {
   try {
     const body = await request.json();
-    const { name, companyName, messagesPerBatch, proxyUrl, autoReply, isActive, status } = body;
+    const { name, companyName, messagesPerBatch, proxyUrl, autoReply, is_active, status } = body;
 
     const updated = await baileysService.updateInstanceConfig(
       params.id,
@@ -56,7 +56,7 @@ export async function PATCH(
         messagesPerBatch,
         proxyUrl,
         autoReply,
-        isActive,
+        is_active,
         status,
       }
     );

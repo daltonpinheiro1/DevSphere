@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
       };
     }
 
-    const conversations = await prisma.whatsAppConversation.findMany({
+    const conversations = await prisma.whatsapp_conversations.findMany({
       where,
       include: {
         agent: {
@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verificar se já existe conversa ativa
-    const existingConv = await prisma.whatsAppConversation.findFirst({
+    const existingConv = await prisma.whatsapp_conversations.findFirst({
       where: {
         instanceId,
         contactPhone,
@@ -109,7 +109,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Criar nova conversa
-    const conversation = await prisma.whatsAppConversation.create({
+    const conversation = await prisma.whatsapp_conversations.create({
       data: {
         instanceId,
         contactPhone,

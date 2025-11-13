@@ -12,7 +12,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const user = await prisma.user.findUnique({
+    const user = await prisma.users.findUnique({
       where: { id: params.id },
       select: {
         id: true,
@@ -20,11 +20,11 @@ export async function GET(
         email: true,
         role: true,
         avatar: true,
-        isActive: true,
-        companyId: true,
-        createdBy: true,
-        createdAt: true,
-        updatedAt: true,
+        is_active: true,
+        company_id: true,
+        created_by: true,
+        created_at: true,
+        updated_at: true,
         creator: {
           select: {
             name: true,
@@ -69,17 +69,17 @@ export async function PATCH(
 ) {
   try {
     const body = await request.json();
-    const { name, email, password, role, isActive, companyId } = body;
+    const { name, email, password, role, is_active, company_id } = body;
 
     const updateData: any = {};
     if (name) updateData.name = name;
     if (email) updateData.email = email;
-    if (password) updateData.passwordHash = await bcrypt.hash(password, 10);
+    if (password) updateData.password_hash = await bcrypt.hash(password, 10);
     if (role) updateData.role = role;
-    if (typeof isActive === 'boolean') updateData.isActive = isActive;
-    if (companyId) updateData.companyId = companyId;
+    if (typeof is_active === 'boolean') updateData.is_active = is_active;
+    if (company_id) updateData.company_id = company_id;
 
-    const user = await prisma.user.update({
+    const user = await prisma.users.update({
       where: { id: params.id },
       data: updateData,
       select: {
@@ -87,9 +87,9 @@ export async function PATCH(
         name: true,
         email: true,
         role: true,
-        isActive: true,
-        companyId: true,
-        updatedAt: true,
+        is_active: true,
+        company_id: true,
+        updated_at: true,
       },
     });
 
@@ -112,14 +112,14 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const user = await prisma.user.update({
+    const user = await prisma.users.update({
       where: { id: params.id },
-      data: { isActive: false },
+      data: { is_active: false },
       select: {
         id: true,
         name: true,
         email: true,
-        isActive: true,
+        is_active: true,
       },
     });
 

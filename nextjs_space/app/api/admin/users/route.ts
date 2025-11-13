@@ -11,13 +11,13 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const role = searchParams.get('role');
-    const companyId = searchParams.get('companyId');
+    const company_id = searchParams.get('company_id');
 
     const where: any = {};
     if (role) where.role = role;
-    if (companyId) where.companyId = companyId;
+    if (company_id) where.company_id = company_id;
 
-    const users = await prisma.user.findMany({
+    const users = await prisma.users.findMany({
       where,
       select: {
         id: true,
@@ -25,11 +25,11 @@ export async function GET(request: NextRequest) {
         email: true,
         role: true,
         avatar: true,
-        isActive: true,
-        companyId: true,
-        createdBy: true,
-        createdAt: true,
-        updatedAt: true,
+        is_active: true,
+        company_id: true,
+        created_by: true,
+        created_at: true,
+        updated_at: true,
         creator: {
           select: {
             name: true,
@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
         },
       },
       orderBy: {
-        createdAt: 'desc',
+        created_at: 'desc',
       },
     });
 
@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, email, password, role, companyId, createdBy } = body;
+    const { name, email, password, role, company_id, created_by } = body;
 
     if (!name || !email || !password || !role) {
       return NextResponse.json(
@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verificar se email já existe
-    const existingUser = await prisma.user.findUnique({
+    const existingUser = await prisma.users.findUnique({
       where: { email },
     });
 
@@ -81,9 +81,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Verificar permissões do criador
-    if (createdBy) {
-      const creator = await prisma.user.findUnique({
-        where: { id: createdBy },
+    if (created_by) {
+      const creator = await prisma.users.findUnique({
+        where: { id: created_by },
       });
 
       if (!creator) {
@@ -104,27 +104,27 @@ export async function POST(request: NextRequest) {
     }
 
     // Criar hash da senha
-    const passwordHash = await bcrypt.hash(password, 10);
+    const password_hash = await bcrypt.hash(password, 10);
 
     // Criar usuário
-    const user = await prisma.user.create({
+    const user = await prisma.users.create({
       data: {
         name,
         email,
-        passwordHash,
+        password_hash,
         role,
-        companyId,
-        createdBy,
-        isActive: true,
+        company_id,
+        created_by,
+        is_active: true,
       },
       select: {
         id: true,
         name: true,
         email: true,
         role: true,
-        companyId: true,
-        isActive: true,
-        createdAt: true,
+        company_id: true,
+        is_active: true,
+        created_at: true,
       },
     });
 

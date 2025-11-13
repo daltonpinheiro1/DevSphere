@@ -8,19 +8,19 @@ const prisma = new PrismaClient()
 
 export async function POST(request: NextRequest) {
   try {
-    const { conversationId, message } = await request.json()
+    const { conversation_id, message } = await request.json()
 
-    if (!conversationId || !message) {
+    if (!conversation_id || !message) {
       return NextResponse.json(
-        { error: 'Missing conversationId or message' },
+        { error: 'Missing conversation_id or message' },
         { status: 400 }
       )
     }
 
     // Save user message to database
-    await prisma.message.create({
+    await prisma.messages.create({
       data: {
-        conversationId,
+        conversation_id,
         content: message,
         sender: 'user'
       }
@@ -80,9 +80,9 @@ export async function POST(request: NextRequest) {
                 const data = line.slice(6)
                 if (data === '[DONE]') {
                   // Save AI response to database
-                  await prisma.message.create({
+                  await prisma.messages.create({
                     data: {
-                      conversationId,
+                      conversation_id,
                       content: aiContent,
                       sender: 'ai'
                     }

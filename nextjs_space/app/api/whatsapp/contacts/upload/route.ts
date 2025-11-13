@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
     const file = formData.get('file') as File;
-    const companyId = formData.get('companyId') as string;
+    const company_id = formData.get('company_id') as string;
 
     if (!file) {
       return NextResponse.json(
@@ -65,11 +65,11 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        await prisma.contact.upsert({
+        await prisma.contacts.upsert({
           where: {
             phoneNumber_companyId: {
               phoneNumber: formattedNumber,
-              companyId: companyId || null as any,
+              company_id: company_id || null as any,
             },
           },
           update: {
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
           create: {
             phoneNumber: formattedNumber,
             name,
-            companyId: companyId || undefined,
+            company_id: company_id || undefined,
           },
         });
 

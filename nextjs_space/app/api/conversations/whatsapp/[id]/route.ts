@@ -11,7 +11,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const conversation = await prisma.whatsAppConversation.findUnique({
+    const conversation = await prisma.whatsapp_conversations.findUnique({
       where: { id: params.id },
       include: {
         agent: {
@@ -85,7 +85,7 @@ export async function PATCH(
     if (salePlanName !== undefined) updateData.salePlanName = salePlanName;
     if (notes !== undefined) updateData.notes = notes;
 
-    const conversation = await prisma.whatsAppConversation.update({
+    const conversation = await prisma.whatsapp_conversations.update({
       where: { id: params.id },
       data: updateData,
       include: {
@@ -118,7 +118,7 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    await prisma.whatsAppConversation.delete({
+    await prisma.whatsapp_conversations.delete({
       where: { id: params.id },
     });
 

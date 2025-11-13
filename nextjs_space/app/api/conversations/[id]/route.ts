@@ -11,7 +11,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const conversation = await prisma.conversation.findUnique({
+    const conversation = await prisma.conversations.findUnique({
       where: { id: params.id }
     })
 
@@ -22,8 +22,8 @@ export async function GET(
       )
     }
 
-    const messages = await prisma.message.findMany({
-      where: { conversationId: params.id },
+    const messages = await prisma.messages.findMany({
+      where: { conversation_id: params.id },
       orderBy: { timestamp: 'asc' }
     })
 

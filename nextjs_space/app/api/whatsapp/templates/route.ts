@@ -10,16 +10,16 @@ import { downloadFile } from '@/lib/s3';
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
-    const companyId = searchParams.get('companyId');
+    const company_id = searchParams.get('company_id');
 
     const where: any = {};
-    if (companyId) {
-      where.companyId = companyId;
+    if (company_id) {
+      where.company_id = company_id;
     }
 
-    const templates = await prisma.messageTemplate.findMany({
+    const templates = await prisma.message_templates.findMany({
       where,
-      orderBy: { createdAt: 'desc' },
+      orderBy: { created_at: 'desc' },
       include: {
         _count: {
           select: { campaigns: true },
@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, content, variables, companyId, createdBy, mediaType, mediaUrl, mediaName } = body;
+    const { name, content, variables, company_id, created_by, mediaType, mediaUrl, mediaName } = body;
 
     if (!name || !content) {
       return NextResponse.json(
@@ -70,13 +70,13 @@ export async function POST(request: NextRequest) {
     // Extrair variáveis do conteúdo (padrão {{variavel}})
     const extractedVariables = extractVariables(content);
 
-    const template = await prisma.messageTemplate.create({
+    const template = await prisma.message_templates.create({
       data: {
         name,
         content,
         variables: variables || extractedVariables,
-        companyId,
-        createdBy,
+        company_id,
+        created_by,
         mediaType,
         mediaUrl,
         mediaName,

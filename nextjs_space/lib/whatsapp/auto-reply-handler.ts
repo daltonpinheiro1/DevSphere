@@ -62,26 +62,8 @@ export class AutoReplyHandler {
     chatbotId?: string
   ): Promise<string | null> {
     try {
-      // Chamar API de chat interna
-      const apiUrl = process.env.ABACUSAI_API_URL || 'https://apis.abacus.ai';
-      const apiKey = process.env.ABACUSAI_API_KEY;
-
-      if (!apiKey) {
-        console.error('API key não configurada');
-        return null;
-      }
-
-      const response = await fetch(`${apiUrl}/v1/chat/complete`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          messages: [
-            {
-              role: 'system',
-              content: `Você é o assistente virtual oficial da Centermed, especializado em atendimento ao cliente sobre o Clube de Serviços da Centermed.
+      // Buscar system prompt do chatbot no banco
+      let systemPrompt = `Você é o assistente virtual oficial da Centermed, especializado em atendimento ao cliente sobre o Clube de Serviços da Centermed.
 
 **SOBRE A CENTERMED:**
 A Centermed é uma empresa de serviços de saúde e telecomunicações que oferece soluções completas para seus clientes através do Clube de Serviços.
@@ -130,7 +112,44 @@ Atendemos em todo o Brasil com instalação em até 48 horas.
 - Esclareça dúvidas sobre preços, cobertura e benefícios
 - Nunca invente informações - se não souber algo, seja honesto e ofereça contato com um especialista
 
-Responda sempre em português brasileiro de forma natural e amigável. Mantenha respostas concisas (máximo 3 parágrafos).`
+Responda sempre em português brasileiro de forma natural e amigável. Mantenha respostas concisas (máximo 3 parágrafos).`;
+
+      // Se chatbotId foi fornecido, buscar do banco
+      if (chatbotId) {
+        try {
+          const chatbot = await prisma.chatbots.findUnique({
+            where: { id: chatbotId, is_active: true },
+          });
+          
+          if (chatbot?.system_prompt) {
+            systemPrompt = chatbot.system_prompt;
+            console.log(`✅ Usando chatbot personalizado: ${chatbot.name}`);
+          }
+        } catch (error) {
+          console.error('Erro ao buscar chatbot, usando prompt padrão:', error);
+        }
+      }
+
+      // Chamar API de chat interna
+      const apiUrl = process.env.ABACUSAI_API_URL || 'https://apis.abacus.ai';
+      const apiKey = process.env.ABACUSAI_API_KEY;
+
+      if (!apiKey) {
+        console.error('API key não configurada');
+        return null;
+      }
+
+      const response = await fetch(`${apiUrl}/v1/chat/complete`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          messages: [
+            {
+              role: 'system',
+              content: systemPrompt,
             },
             {
               role: 'user',

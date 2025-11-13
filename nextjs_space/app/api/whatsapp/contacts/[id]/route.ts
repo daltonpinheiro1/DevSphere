@@ -11,14 +11,14 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const contact = await prisma.contact.findUnique({
+    const contact = await prisma.contacts.findUnique({
       where: { id: params.id },
       include: {
         campaignMessages: {
           include: {
             campaign: true,
           },
-          orderBy: { createdAt: 'desc' },
+          orderBy: { created_at: 'desc' },
           take: 10,
         },
       },
@@ -56,7 +56,7 @@ export async function PATCH(
     const body = await request.json();
     const { name, metadata } = body;
 
-    const contact = await prisma.contact.update({
+    const contact = await prisma.contacts.update({
       where: { id: params.id },
       data: {
         name: name !== undefined ? name : undefined,
@@ -87,7 +87,7 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    await prisma.contact.delete({
+    await prisma.contacts.delete({
       where: { id: params.id },
     });
 

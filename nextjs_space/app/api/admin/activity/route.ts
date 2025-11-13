@@ -28,16 +28,16 @@ export async function GET(request: NextRequest) {
       const nextDate = new Date(date);
       nextDate.setDate(nextDate.getDate() + 1);
 
-      const conversations = await prisma.conversation.count({
+      const conversations = await prisma.conversations.count({
         where: {
-          createdAt: {
+          created_at: {
             gte: date,
             lt: nextDate,
           },
         },
       });
 
-      const messages = await prisma.message.count({
+      const messages = await prisma.messages.count({
         where: {
           timestamp: {
             gte: date,

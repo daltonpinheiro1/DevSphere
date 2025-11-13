@@ -15,7 +15,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const proxy = await prisma.proxyServer.findUnique({
+    const proxy = await prisma.proxy_servers.findUnique({
       where: { id: params.id }
     });
 

@@ -8,8 +8,8 @@ const prisma = new PrismaClient()
 
 export async function GET() {
   try {
-    const conversations = await prisma.conversation.findMany({
-      orderBy: { createdAt: 'desc' },
+    const conversations = await prisma.conversations.findMany({
+      orderBy: { created_at: 'desc' },
       include: {
         _count: {
           select: { messages: true }
@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
   try {
     const { title } = await request.json()
 
-    const conversation = await prisma.conversation.create({
+    const conversation = await prisma.conversations.create({
       data: {
         title: title || 'Nova Conversa'
       }

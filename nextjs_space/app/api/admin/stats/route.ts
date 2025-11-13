@@ -17,22 +17,22 @@ export async function GET(request: NextRequest) {
     }
 
     // Get total users
-    const totalUsers = await prisma.user.count();
+    const totalUsers = await prisma.users.count();
 
     // Get conversations today
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    const conversationsToday = await prisma.conversation.count({
+    const conversationsToday = await prisma.conversations.count({
       where: {
-        createdAt: {
+        created_at: {
           gte: today,
         },
       },
     });
 
     // Get total messages
-    const totalMessages = await prisma.message.count();
+    const totalMessages = await prisma.messages.count();
 
     // Calculate average response time (simplified)
     const avgResponseTime = "2.3s";

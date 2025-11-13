@@ -9,24 +9,24 @@ import { prisma } from '@/lib/db';
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
-    const companyId = searchParams.get('companyId');
+    const company_id = searchParams.get('company_id');
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
     const search = searchParams.get('search');
 
     const where: any = {};
 
-    if (companyId) {
-      where.companyId = companyId;
+    if (company_id) {
+      where.company_id = company_id;
     }
 
     if (startDate || endDate) {
-      where.createdAt = {};
+      where.created_at = {};
       if (startDate) {
-        where.createdAt.gte = new Date(startDate);
+        where.created_at.gte = new Date(startDate);
       }
       if (endDate) {
-        where.createdAt.lte = new Date(endDate);
+        where.created_at.lte = new Date(endDate);
       }
     }
 
@@ -37,9 +37,9 @@ export async function GET(request: NextRequest) {
       ];
     }
 
-    const contacts = await prisma.contact.findMany({
+    const contacts = await prisma.contacts.findMany({
       where,
-      orderBy: { createdAt: 'desc' },
+      orderBy: { created_at: 'desc' },
       include: {
         _count: {
           select: { campaignMessages: true },
@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { phoneNumber, name, companyId, metadata } = body;
+    const { phoneNumber, name, company_id, metadata } = body;
 
     if (!phoneNumber) {
       return NextResponse.json(
@@ -93,11 +93,11 @@ export async function POST(request: NextRequest) {
       ? cleanedNumber
       : `55${cleanedNumber}`;
 
-    const contact = await prisma.contact.upsert({
+    const contact = await prisma.contacts.upsert({
       where: {
         phoneNumber_companyId: {
           phoneNumber: formattedNumber,
-          companyId: companyId || null,
+          company_id: company_id || null,
         },
       },
       update: {
@@ -107,7 +107,7 @@ export async function POST(request: NextRequest) {
       create: {
         phoneNumber: formattedNumber,
         name,
-        companyId,
+        company_id,
         metadata: metadata || undefined,
       },
     });

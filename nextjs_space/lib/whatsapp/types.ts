@@ -6,7 +6,7 @@ export interface WhatsAppInstanceData {
   status: 'disconnected' | 'connecting' | 'connected' | 'error';
   qrCode?: string;
   chatbotId?: string;
-  companyId?: string;
+  company_id?: string;
   autoReply: boolean;
 }
 

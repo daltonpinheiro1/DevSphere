@@ -9,16 +9,16 @@ import { prisma } from '@/lib/db';
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
-    const companyId = searchParams.get('companyId');
+    const company_id = searchParams.get('company_id');
     const status = searchParams.get('status');
 
     const where: any = {};
-    if (companyId) where.companyId = companyId;
+    if (company_id) where.company_id = company_id;
     if (status) where.status = status;
 
-    const campaigns = await prisma.campaign.findMany({
+    const campaigns = await prisma.campaigns.findMany({
       where,
-      orderBy: { createdAt: 'desc' },
+      orderBy: { created_at: 'desc' },
       include: {
         instance: {
           select: {
@@ -69,8 +69,8 @@ export async function POST(request: NextRequest) {
       intervalMax,
       riskLevel,
       scheduledAt,
-      companyId,
-      createdBy,
+      company_id,
+      created_by,
     } = body;
 
     if (!name || !instanceId || !contacts || contacts.length === 0) {
@@ -86,13 +86,13 @@ export async function POST(request: NextRequest) {
     // Buscar template se fornecido
     let template = null;
     if (templateId) {
-      template = await prisma.messageTemplate.findUnique({
+      template = await prisma.message_templates.findUnique({
         where: { id: templateId },
       });
     }
 
     // Criar campanha
-    const campaign = await prisma.campaign.create({
+    const campaign = await prisma.campaigns.create({
       data: {
         name,
         instanceId,
@@ -103,8 +103,8 @@ export async function POST(request: NextRequest) {
         intervalMax: intervalMax || 10,
         riskLevel: riskLevel || 'medium',
         scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
-        companyId,
-        createdBy,
+        company_id,
+        created_by,
       },
     });
 
@@ -118,18 +118,18 @@ export async function POST(request: NextRequest) {
         ? cleanedNumber
         : `55${cleanedNumber}`;
 
-      const contact = await prisma.contact.upsert({
+      const contact = await prisma.contacts.upsert({
         where: {
           phoneNumber_companyId: {
             phoneNumber: formattedNumber,
-            companyId: companyId || null,
+            company_id: company_id || null,
           },
         },
         update: {},
         create: {
           phoneNumber: formattedNumber,
           name: contactData.name,
-          companyId,
+          company_id,
         },
       });
 
@@ -155,7 +155,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Criar todas as mensagens em lote
-    await prisma.campaignMessage.createMany({
+    await prisma.campaign_messages.createMany({
       data: campaignMessages,
     });
 

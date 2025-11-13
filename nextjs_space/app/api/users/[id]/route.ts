@@ -19,7 +19,7 @@ export async function GET(
       );
     }
 
-    const user = await prisma.user.findUnique({
+    const user = await prisma.users.findUnique({
       where: { id: params.id },
       select: {
         id: true,
@@ -27,9 +27,9 @@ export async function GET(
         email: true,
         role: true,
         avatar: true,
-        isActive: true,
-        createdAt: true,
-        updatedAt: true,
+        is_active: true,
+        created_at: true,
+        updated_at: true,
       },
     });
 
@@ -65,9 +65,9 @@ export async function PATCH(
     }
 
     const body = await request.json();
-    const { name, role, isActive } = body;
+    const { name, role, is_active } = body;
 
-    // Only admin can change role and isActive
+    // Only admin can change role and is_active
     const isAdmin = (session.user as any)?.role === "ADMIN";
     const isSelf = (session.user as any)?.id === params.id;
 
@@ -82,9 +82,9 @@ export async function PATCH(
 
     if (name) updateData.name = name;
     if (isAdmin && role) updateData.role = role;
-    if (isAdmin && typeof isActive === "boolean") updateData.isActive = isActive;
+    if (isAdmin && typeof is_active === "boolean") updateData.is_active = is_active;
 
-    const user = await prisma.user.update({
+    const user = await prisma.users.update({
       where: { id: params.id },
       data: updateData,
       select: {
@@ -93,8 +93,8 @@ export async function PATCH(
         email: true,
         role: true,
         avatar: true,
-        isActive: true,
-        updatedAt: true,
+        is_active: true,
+        updated_at: true,
       },
     });
 
@@ -122,7 +122,7 @@ export async function DELETE(
       );
     }
 
-    await prisma.user.delete({
+    await prisma.users.delete({
       where: { id: params.id },
     });
 

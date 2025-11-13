@@ -1,326 +1,271 @@
-
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
-    provider = "prisma-client-js"
-    binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
-    output = "/home/ubuntu/center_ai_omni/nextjs_space/node_modules/.prisma/client"
+  provider      = "prisma-client-js"
+  output        = "/home/ubuntu/center_ai_omni/nextjs_space/node_modules/.prisma/client"
+  binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
 }
 
 datasource db {
-    provider = "postgresql"
-    url      = env("DATABASE_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
-// User Authentication and Management
-enum UserRole {
-  ADMIN       // Administrador: cria contas e designa gerentes
-  MANAGER     // Gerente: cria acessos e configurações
-  ASSISTANT   // Auxiliar: acesso restrito às conversas
-  USER        // Usuário padrão
-  GUEST       // Visitante
+model campaign_messages {
+  id              String    @id
+  campaign_id     String
+  contact_id      String
+  message_content String
+  status          String    @default("pending")
+  error_message   String?
+  sent_at         DateTime?
+  delivered_at    DateTime?
+  read_at         DateTime?
+  created_at      DateTime  @default(now())
+  campaigns       campaigns @relation(fields: [campaign_id], references: [id], onDelete: Cascade)
+  contacts        contacts  @relation(fields: [contact_id], references: [id], onDelete: Cascade)
 }
 
-model User {
-  id           String   @id @default(cuid())
-  name         String
-  email        String   @unique
-  passwordHash String   @map("password_hash")
-  role         UserRole @default(USER)
-  avatar       String?
-  isActive     Boolean  @default(true) @map("is_active")
-  createdBy    String?  @map("created_by") // ID do usuário que criou esta conta
-  companyId    String?  @map("company_id") // ID da empresa do usuário
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
-  
-  conversations Conversation[]
-  settings      Settings?
-  whatsappConversations WhatsAppConversation[] @relation("AssignedAgent")
-  createdUsers User[] @relation("UserCreator")
-  creator      User?  @relation("UserCreator", fields: [createdBy], references: [id])
-  
-  @@map("users")
+model campaigns {
+  id                 String              @id
+  name               String
+  instance_id        String
+  template_id        String?
+  status             String              @default("draft")
+  total_contacts     Int                 @default(0)
+  sent_count         Int                 @default(0)
+  failed_count       Int                 @default(0)
+  interval_min       Int                 @default(3)
+  interval_max       Int                 @default(10)
+  riskLevel          String              @default("medium")
+  scheduled_at       DateTime?
+  started_at         DateTime?
+  completed_at       DateTime?
+  company_id         String?
+  created_by         String?
+  created_at         DateTime            @default(now())
+  updated_at         DateTime
+  campaign_messages  campaign_messages[]
+  whatsapp_instances whatsapp_instances  @relation(fields: [instance_id], references: [id], onDelete: Cascade)
+  message_templates  message_templates?  @relation(fields: [template_id], references: [id])
 }
 
-model Settings {
-  id              String   @id @default(cuid())
-  userId          String   @unique @map("user_id")
-  
-  // AI Configuration
-  aiModel         String   @default("gpt-4") @map("ai_model")
-  aiTemperature   Float    @default(0.7) @map("ai_temperature")
-  maxTokens       Int      @default(2000) @map("max_tokens")
-  systemPrompt    String?  @map("system_prompt") @db.Text
-  
-  // User Preferences
+model chatbots {
+  id            String   @id
+  name          String
+  description   String?
+  system_prompt String
+  is_active     Boolean  @default(true)
+  created_at    DateTime @default(now())
+  updated_at    DateTime
+}
+
+model contacts {
+  id                String              @id
+  phone_number      String
+  name              String?
+  company_id        String?
+  metadata          Json?
+  created_at        DateTime            @default(now())
+  updated_at        DateTime
+  campaign_messages campaign_messages[]
+
+  @@unique([phone_number, company_id])
+}
+
+model conversations {
+  id         String     @id
+  title      String
+  created_at DateTime   @default(now())
+  updated_at DateTime
+  user_id    String?
+  users      users?     @relation(fields: [user_id], references: [id])
+  messages   messages[]
+}
+
+model message_templates {
+  id         String      @id
+  name       String
+  content    String
+  variables  String[]    @default([])
+  company_id String?
+  created_by String?
+  created_at DateTime    @default(now())
+  updated_at DateTime
+  media_name String?
+  media_type String?
+  media_url  String?
+  campaigns  campaigns[]
+}
+
+model messages {
+  id              String        @id
+  conversation_id String
+  content         String
+  sender          String
+  timestamp       DateTime      @default(now())
+  conversations   conversations @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
+}
+
+model proxy_servers {
+  id             String    @id
+  url            String    @unique
+  protocol       String
+  host           String
+  port           Int
+  username       String?
+  password       String?
+  country        String?
+  status         String    @default("testing")
+  last_checked   DateTime?
+  response_time  Int?
+  success_rate   Int       @default(100)
+  total_uses     Int       @default(0)
+  total_failures Int       @default(0)
+  created_at     DateTime  @default(now())
+  updated_at     DateTime
+}
+
+model settings {
+  id              String   @id
+  user_id         String   @unique
+  ai_model        String   @default("gpt-4")
+  ai_temperature  Float    @default(0.7)
+  max_tokens      Int      @default(2000)
+  system_prompt   String?
   theme           String   @default("dark")
   language        String   @default("pt-BR")
   notifications   Boolean  @default(true)
-  
-  // Chatbot Customization
-  chatbotName     String   @default("CENTER AI") @map("chatbot_name")
-  chatbotAvatar   String?  @map("chatbot_avatar")
-  welcomeMessage  String   @default("Olá! Como posso ajudar você hoje?") @map("welcome_message")
-  
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
-  
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  @@map("settings")
+  chatbot_name    String   @default("CENTER AI")
+  chatbot_avatar  String?
+  welcome_message String   @default("Olá! Como posso ajudar você hoje?")
+  created_at      DateTime @default(now())
+  updated_at      DateTime
+  users           users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
 }
 
-model Conversation {
-  id        String   @id @default(cuid())
-  title     String
-  userId    String?  @map("user_id")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-  messages  Message[]
-  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-
-  @@map("conversations")
+model users {
+  id                     String                   @id
+  name                   String
+  email                  String                   @unique
+  password_hash          String
+  role                   UserRole                 @default(USER)
+  avatar                 String?
+  is_active              Boolean                  @default(true)
+  created_at             DateTime                 @default(now())
+  updated_at             DateTime
+  company_id             String?
+  created_by             String?
+  conversations          conversations[]
+  settings               settings?
+  users                  users?                   @relation("usersTousers", fields: [created_by], references: [id])
+  other_users            users[]                  @relation("usersTousers")
+  whatsapp_conversations whatsapp_conversations[]
 }
 
-model Message {
-  id             String       @id @default(cuid())
-  conversationId String       @map("conversation_id")
-  content        String
-  sender         String       // 'user' or 'ai'
-  timestamp      DateTime     @default(now())
-  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+model whatsapp_conversation_messages {
+  id                     String                 @id
+  conversation_id        String
+  message_id             String
+  from_me                Boolean
+  content                String
+  message_type           String                 @default("text")
+  timestamp              DateTime               @default(now())
+  whatsapp_conversations whatsapp_conversations @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
 
-  @@map("messages")
+  @@unique([conversation_id, message_id])
+  @@index([conversation_id])
 }
 
-// WhatsApp Integration Models
-model WhatsAppInstance {
-  id              String   @id @default(cuid())
-  name            String   // Nome identificador da instância
-  phoneNumber     String?  @map("phone_number") // Número conectado (formato: 5531999887766)
-  status          String   @default("disconnected") // disconnected, connecting, connected, error, paused
-  qrCode          String?  @map("qr_code") // QR code para conexão
-  sessionData     String?  @map("session_data") @db.Text // Dados da sessão Baileys (JSON)
-  chatbotId       String?  @map("chatbot_id") // ID do chatbot associado
-  companyId       String?  @map("company_id") // ID da empresa dona da instância
-  companyName     String?  @map("company_name") // Nome da empresa vinculada
-  autoReply       Boolean  @default(true) @map("auto_reply") // Responder automaticamente
-  isActive        Boolean  @default(true) @map("is_active") // Se o chat está ativo
-  
-  // Configurações de Rate Limiting e DNS Dinâmico
-  messagesPerBatch Int     @default(50) @map("messages_per_batch") // Mensagens antes de rotação (10, 20, 50, 100)
-  currentMessageCount Int  @default(0) @map("current_message_count") // Contador de mensagens da sessão atual
-  totalMessagesSent Int    @default(0) @map("total_messages_sent") // Total de disparos realizados
-  proxyUrl         String? @map("proxy_url") // URL do proxy/DNS dinâmico
-  lastDnsRotation  DateTime? @map("last_dns_rotation") // Última rotação de DNS
-  
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
-  lastConnectedAt DateTime? @map("last_connected_at")
-  
-  campaigns       Campaign[]
-  whatsappMessages WhatsAppMessage[]
-  
-  @@map("whatsapp_instances")
+model whatsapp_conversations {
+  id                             String                           @id
+  instance_id                    String
+  contact_phone                  String
+  contact_name                   String?
+  status                         ConversationStatus               @default(ACTIVE)
+  assigned_to                    String?
+  tabulation_reason              TabulationReason?
+  sale_type                      SaleType?
+  sale_plan_name                 String?
+  notes                          String?
+  created_at                     DateTime                         @default(now())
+  updated_at                     DateTime
+  closed_at                      DateTime?
+  last_message_at                DateTime                         @default(now())
+  tabulated_at                   DateTime?
+  whatsapp_conversation_messages whatsapp_conversation_messages[]
+  users                          users?                           @relation(fields: [assigned_to], references: [id])
+
+  @@unique([instance_id, contact_phone])
+  @@index([assigned_to])
+  @@index([last_message_at])
+  @@index([status])
+  @@index([tabulated_at])
 }
 
-model Contact {
-  id              String   @id @default(cuid())
-  phoneNumber     String   @map("phone_number") // Formato brasileiro: 5531999887766
-  name            String?
-  companyId       String?  @map("company_id")
-  metadata        Json?    // Informações adicionais (JSON)
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
-  
-  campaignMessages CampaignMessage[]
-  
-  @@unique([phoneNumber, companyId])
-  @@map("contacts")
+model whatsapp_instances {
+  id                    String              @id
+  name                  String
+  phone_number          String?
+  status                String              @default("disconnected")
+  qr_code               String?
+  session_data          String?
+  chatbot_id            String?
+  company_id            String?
+  auto_reply            Boolean             @default(true)
+  created_at            DateTime            @default(now())
+  updated_at            DateTime
+  last_connected_at     DateTime?
+  current_message_count Int                 @default(0)
+  last_dns_rotation     DateTime?
+  messages_per_batch    Int                 @default(50)
+  proxy_url             String?
+  company_name          String?
+  is_active             Boolean             @default(true)
+  total_messages_sent   Int                 @default(0)
+  campaigns             campaigns[]
+  whatsapp_messages     whatsapp_messages[]
 }
 
-model MessageTemplate {
-  id          String   @id @default(cuid())
-  name        String
-  content     String   @db.Text // Template com variáveis {{nome}}, {{empresa}}, etc
-  variables   String[] @default([]) // Lista de variáveis disponíveis
-  mediaType   String?  @map("media_type") // 'image', 'video', 'audio', 'document'
-  mediaUrl    String?  @map("media_url") // URL da mídia armazenada
-  mediaName   String?  @map("media_name") // Nome original do arquivo
-  companyId   String?  @map("company_id")
-  createdBy   String?  @map("created_by") // ID do usuário criador
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-  
-  campaigns   Campaign[]
-  
-  @@map("message_templates")
+model whatsapp_messages {
+  id                 String             @id
+  instance_id        String
+  remote_jid         String
+  message_id         String
+  from_me            Boolean
+  content            String
+  message_type       String             @default("text")
+  status             String?
+  timestamp          DateTime           @default(now())
+  whatsapp_instances whatsapp_instances @relation(fields: [instance_id], references: [id], onDelete: Cascade)
+
+  @@unique([instance_id, message_id])
 }
 
-model Campaign {
-  id                String   @id @default(cuid())
-  name              String
-  instanceId        String   @map("instance_id")
-  templateId        String?  @map("template_id")
-  status            String   @default("draft") // draft, scheduled, running, paused, completed, cancelled
-  totalContacts     Int      @default(0) @map("total_contacts")
-  sentCount         Int      @default(0) @map("sent_count")
-  failedCount       Int      @default(0) @map("failed_count")
-  
-  // Configurações de envio
-  intervalMin       Int      @default(3) @map("interval_min") // Intervalo mínimo em segundos
-  intervalMax       Int      @default(10) @map("interval_max") // Intervalo máximo em segundos
-  riskLevel         String   @default("medium") // low, medium, high
-  
-  // Agendamento
-  scheduledAt       DateTime? @map("scheduled_at")
-  startedAt         DateTime? @map("started_at")
-  completedAt       DateTime? @map("completed_at")
-  
-  companyId         String?  @map("company_id")
-  createdBy         String?  @map("created_by")
-  createdAt         DateTime @default(now()) @map("created_at")
-  updatedAt         DateTime @updatedAt @map("updated_at")
-  
-  instance          WhatsAppInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
-  template          MessageTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
-  messages          CampaignMessage[]
-  
-  @@map("campaigns")
-}
-
-model CampaignMessage {
-  id              String   @id @default(cuid())
-  campaignId      String   @map("campaign_id")
-  contactId       String   @map("contact_id")
-  messageContent  String   @map("message_content") @db.Text
-  status          String   @default("pending") // pending, sent, failed, delivered, read
-  errorMessage    String?  @map("error_message")
-  sentAt          DateTime? @map("sent_at")
-  deliveredAt     DateTime? @map("delivered_at")
-  readAt          DateTime? @map("read_at")
-  createdAt       DateTime @default(now()) @map("created_at")
-  
-  campaign        Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  contact         Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
-  
-  @@map("campaign_messages")
-}
-
-model WhatsAppMessage {
-  id              String   @id @default(cuid())
-  instanceId      String   @map("instance_id")
-  remoteJid       String   @map("remote_jid") // ID do contato no WhatsApp
-  messageId       String   @map("message_id") // ID da mensagem no WhatsApp
-  fromMe          Boolean  @map("from_me")
-  content         String   @db.Text
-  messageType     String   @default("text") @map("message_type") // text, image, audio, video, document
-  status          String?  // sent, delivered, read
-  timestamp       DateTime @default(now())
-  
-  instance        WhatsAppInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
-  
-  @@unique([instanceId, messageId])
-  @@map("whatsapp_messages")
-}
-
-// Proxy Server Pool para rotação de IP
-model ProxyServer {
-  id              String   @id @default(cuid())
-  url             String   @unique // Formato: http://user:pass@host:port ou socks5://host:port
-  protocol        String   // http, https, socks5
-  host            String
-  port            Int
-  username        String?
-  password        String?
-  country         String?  // País do proxy para geolocalização
-  
-  // Status e Performance
-  status          String   @default("testing") // testing, active, inactive
-  lastChecked     DateTime? @map("last_checked")
-  responseTime    Int?     @map("response_time") // Tempo de resposta em ms
-  successRate     Int      @default(100) @map("success_rate") // Taxa de sucesso (0-100)
-  
-  // Contadores
-  totalUses       Int      @default(0) @map("total_uses") // Total de vezes usado
-  totalFailures   Int      @default(0) @map("total_failures") // Total de falhas
-  
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
-  
-  @@map("proxy_servers")
-}
-
-// Gerenciamento de Conversas do WhatsApp
 enum ConversationStatus {
-  ACTIVE      // Conversa ativa
-  CLOSED      // Conversa encerrada
-  REOPENED    // Conversa reaberta
-}
-
-enum TabulationReason {
-  SALE_MADE               // Venda realizada
-  CONSIDERED_EXPENSIVE    // Considerou caro
-  REFUSED_NO_REASON       // Recusou sem justificar
-  NO_INTEREST_PLAN        // Não tem interesse no plano
-  INTEREST_INTERNET_ONLY  // Interesse apenas na internet
-  INTEREST_PLAN_ONLY      // Interesse apenas no plano
+  ACTIVE
+  CLOSED
+  REOPENED
 }
 
 enum SaleType {
-  INTERNET         // Plano de Internet
-  HEALTH_PLAN      // Plano de Saúde
-  COMBO            // Combo (Internet + Plano)
-  OTHER            // Outro tipo
+  INTERNET
+  HEALTH_PLAN
+  COMBO
+  OTHER
 }
 
-model WhatsAppConversation {
-  id              String   @id @default(cuid())
-  instanceId      String   @map("instance_id")
-  contactPhone    String   @map("contact_phone") // Telefone do contato
-  contactName     String?  @map("contact_name")
-  status          ConversationStatus @default(ACTIVE)
-  
-  // Atribuição e Tabulação
-  assignedTo      String?  @map("assigned_to") // ID do agente responsável
-  tabulationReason TabulationReason? @map("tabulation_reason")
-  saleType        SaleType? @map("sale_type")
-  salePlanName    String?  @map("sale_plan_name") // Nome do plano vendido
-  notes           String?  @db.Text // Observações adicionais
-  
-  // Timestamps de controle
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
-  closedAt        DateTime? @map("closed_at")
-  lastMessageAt   DateTime @default(now()) @map("last_message_at")
-  tabulatedAt     DateTime? @map("tabulated_at")
-  
-  // Relações
-  agent           User?    @relation("AssignedAgent", fields: [assignedTo], references: [id])
-  messages        WhatsAppConversationMessage[]
-  
-  @@unique([instanceId, contactPhone])
-  @@index([status])
-  @@index([assignedTo])
-  @@index([tabulatedAt])
-  @@index([lastMessageAt])
-  @@map("whatsapp_conversations")
+enum TabulationReason {
+  SALE_MADE
+  CONSIDERED_EXPENSIVE
+  REFUSED_NO_REASON
+  NO_INTEREST_PLAN
+  INTEREST_INTERNET_ONLY
+  INTEREST_PLAN_ONLY
 }
 
-model WhatsAppConversationMessage {
-  id              String   @id @default(cuid())
-  conversationId  String   @map("conversation_id")
-  messageId       String   @map("message_id") // ID da mensagem no WhatsApp
-  fromMe          Boolean  @map("from_me")
-  content         String   @db.Text
-  messageType     String   @default("text") @map("message_type") // text, image, audio, video, document
-  timestamp       DateTime @default(now())
-  
-  conversation    WhatsAppConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  
-  @@unique([conversationId, messageId])
-  @@index([conversationId])
-  @@map("whatsapp_conversation_messages")
+enum UserRole {
+  ADMIN
+  USER
+  GUEST
+  MANAGER
+  ASSISTANT
 }

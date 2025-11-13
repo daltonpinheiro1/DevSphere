@@ -22,9 +22,9 @@ export async function POST(
     }
 
     // Criar mensagem
-    const message = await prisma.whatsAppConversationMessage.create({
+    const message = await prisma.whatsapp_conversation_messages.create({
       data: {
-        conversationId: params.id,
+        conversation_id: params.id,
         messageId,
         fromMe,
         content,
@@ -34,7 +34,7 @@ export async function POST(
     });
 
     // Atualizar lastMessageAt da conversa
-    await prisma.whatsAppConversation.update({
+    await prisma.whatsapp_conversations.update({
       where: { id: params.id },
       data: { lastMessageAt: new Date() },
     });

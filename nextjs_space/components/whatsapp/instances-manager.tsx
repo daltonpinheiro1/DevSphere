@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { Loader2, Plus, Power, PowerOff, Trash2, QrCode, Settings, Pause, Play, RefreshCw } from 'lucide-react';
 import Image from 'next/image';
@@ -28,6 +29,26 @@ interface WhatsAppInstance {
   isActive: boolean;
   totalMessagesSent: number;
   currentMessageCount: number;
+  chatbotId?: string;
+  companyId?: string;
+}
+
+interface Chatbot {
+  id: string;
+  name: string;
+  description?: string;
+}
+
+interface Template {
+  id: string;
+  name: string;
+}
+
+interface Proxy {
+  id: string;
+  url: string;
+  country?: string;
+  isActive: boolean;
 }
 
 export function InstancesManager() {
@@ -40,15 +61,45 @@ export function InstancesManager() {
   const [selectedInstance, setSelectedInstance] = useState<WhatsAppInstance | null>(null);
   const [currentQr, setCurrentQr] = useState<string>('');
 
+  // Listas de opções
+  const [chatbots, setChatbots] = useState<Chatbot[]>([]);
+  const [templates, setTemplates] = useState<Template[]>([]);
+  const [proxies, setProxies] = useState<Proxy[]>([]);
+
   // Form states
   const [name, setName] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [messagesPerBatch, setMessagesPerBatch] = useState(20);
   const [proxyUrl, setProxyUrl] = useState('');
+  const [chatbotId, setChatbotId] = useState('');
+  const [templateId, setTemplateId] = useState('');
+  const [companyId, setCompanyId] = useState('');
 
   useEffect(() => {
     fetchInstances();
+    fetchOptions();
   }, []);
+
+  const fetchOptions = async () => {
+    try {
+      // Buscar chatbots
+      const chatbotsRes = await fetch('/api/whatsapp/chatbots');
+      const chatbotsData = await chatbotsRes.json();
+      setChatbots(chatbotsData.chatbots || []);
+
+      // Buscar templates
+      const templatesRes = await fetch('/api/whatsapp/templates');
+      const templatesData = await templatesRes.json();
+      setTemplates(templatesData.templates || []);
+
+      // Buscar proxies
+      const proxiesRes = await fetch('/api/whatsapp/proxies');
+      const proxiesData = await proxiesRes.json();
+      setProxies(proxiesData.proxies?.filter((p: Proxy) => p.isActive) || []);
+    } catch (error) {
+      console.error('Erro ao carregar opções:', error);
+    }
+  };
 
   const fetchInstances = async () => {
     try {
@@ -70,6 +121,11 @@ export function InstancesManager() {
       return;
     }
 
+    if (!chatbotId) {
+      toast.error('Selecione um chatbot');
+      return;
+    }
+
     try {
       const res = await fetch('/api/whatsapp/instances', {
         method: 'POST',
@@ -79,6 +135,8 @@ export function InstancesManager() {
           companyName: companyName || undefined,
           messagesPerBatch,
           proxyUrl: proxyUrl || undefined,
+          chatbotId,
+          companyId: companyId || undefined,
         }),
       });
 
@@ -315,6 +373,9 @@ export function InstancesManager() {
     setCompanyName('');
     setMessagesPerBatch(20);
     setProxyUrl('');
+    setChatbotId('');
+    setTemplateId('');
+    setCompanyId('');
   };
 
   const getStatusBadge = (status: string) => {
@@ -368,7 +429,7 @@ export function InstancesManager() {
                   <DialogTitle>Conectar Novo Número WhatsApp</DialogTitle>
                   <DialogDescription>Crie uma nova instância para conectar um número via QR Code</DialogDescription>
                 </DialogHeader>
-                <div className="space-y-4">
+                <div className="space-y-4 max-h-[60vh] overflow-y-auto">
                   <div>
                     <Label htmlFor="name">Nome da Instância *</Label>
                     <Input
@@ -378,17 +439,84 @@ export function InstancesManager() {
                       onChange={(e) => setName(e.target.value)}
                     />
                   </div>
+
+                  <div>
+                    <Label htmlFor="chatbot">Chatbot (IA) *</Label>
+                    <Select value={chatbotId} onValueChange={setChatbotId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione um chatbot" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {chatbots.length === 0 ? (
+                          <SelectItem value="no-chatbot" disabled>
+                            Nenhum chatbot disponível
+                          </SelectItem>
+                        ) : (
+                          chatbots.map((bot) => (
+                            <SelectItem key={bot.id} value={bot.id}>
+                              {bot.name}
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      IA que responderá automaticamente as mensagens
+                    </p>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="template">Template Padrão (Opcional)</Label>
+                    <Select value={templateId} onValueChange={setTemplateId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione um template" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Nenhum</SelectItem>
+                        {templates.map((tpl) => (
+                          <SelectItem key={tpl.id} value={tpl.id}>
+                            {tpl.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Template de mensagem inicial (opcional)
+                    </p>
+                  </div>
+
                   <div>
                     <Label htmlFor="companyName">Nome da Empresa (Opcional)</Label>
                     <Input
                       id="companyName"
-                      placeholder="Ex: Sua Empresa"
+                      placeholder="Ex: Centermed"
                       value={companyName}
                       onChange={(e) => setCompanyName(e.target.value)}
                     />
                   </div>
+
                   <div>
-                    <Label htmlFor="messagesPerBatch">Mensagens por Lote (Rate Limiting)</Label>
+                    <Label htmlFor="proxy">Proxy (Recomendado)</Label>
+                    <Select value={proxyUrl} onValueChange={setProxyUrl}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione um proxy" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Sem proxy</SelectItem>
+                        {proxies.map((proxy) => (
+                          <SelectItem key={proxy.id} value={proxy.url}>
+                            {proxy.country || proxy.url} {proxy.isActive && '✅'}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      ⚠️ Proxies evitam bloqueio de IP pelo WhatsApp
+                    </p>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="messagesPerBatch">Mensagens por Lote</Label>
                     <Input
                       id="messagesPerBatch"
                       type="number"
@@ -397,23 +525,13 @@ export function InstancesManager() {
                       onChange={(e) => setMessagesPerBatch(parseInt(e.target.value) || 20)}
                     />
                     <p className="text-xs text-muted-foreground mt-1">
-                      Define quantas mensagens enviar antes de fazer uma pausa
+                      Quantas mensagens enviar antes de pausar (rate limit)
                     </p>
                   </div>
-                  <div>
-                    <Label htmlFor="proxyUrl">Proxy URL (Opcional)</Label>
-                    <Input
-                      id="proxyUrl"
-                      placeholder="http://proxy:port"
-                      value={proxyUrl}
-                      onChange={(e) => setProxyUrl(e.target.value)}
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Use proxy para rotação de IP dinâmica
-                    </p>
-                  </div>
-                  <Button onClick={createInstance} className="w-full">
-                    Criar e Conectar
+
+                  <Button onClick={createInstance} className="w-full bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Criar Instância
                   </Button>
                 </div>
               </DialogContent>

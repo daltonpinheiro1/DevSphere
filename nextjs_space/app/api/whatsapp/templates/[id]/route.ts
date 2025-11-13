@@ -11,11 +11,11 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const template = await prisma.messageTemplate.findUnique({
+    const template = await prisma.message_templates.findUnique({
       where: { id: params.id },
       include: {
         campaigns: {
-          orderBy: { createdAt: 'desc' },
+          orderBy: { created_at: 'desc' },
           take: 10,
         },
       },
@@ -67,7 +67,7 @@ export async function PATCH(
     if (mediaUrl !== undefined) updateData.mediaUrl = mediaUrl;
     if (mediaName !== undefined) updateData.mediaName = mediaName;
 
-    const template = await prisma.messageTemplate.update({
+    const template = await prisma.message_templates.update({
       where: { id: params.id },
       data: updateData,
     });
@@ -95,7 +95,7 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    await prisma.messageTemplate.delete({
+    await prisma.message_templates.delete({
       where: { id: params.id },
     });
 

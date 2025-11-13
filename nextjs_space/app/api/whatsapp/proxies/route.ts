@@ -11,7 +11,7 @@ import { prisma } from '@/lib/db';
 
 export async function GET(req: NextRequest) {
   try {
-    const proxies = await prisma.proxyServer.findMany({
+    const proxies = await prisma.proxy_servers.findMany({
       orderBy: [
         { status: 'asc' },
         { responseTime: 'asc' }

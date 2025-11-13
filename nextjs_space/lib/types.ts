@@ -2,13 +2,13 @@
 export interface Conversation {
   id: string
   title: string
-  createdAt: string
-  updatedAt: string
+  created_at: string
+  updated_at: string
 }
 
 export interface Message {
   id: string
-  conversationId: string
+  conversation_id: string
   content: string
   sender: 'user' | 'ai'
   timestamp: string

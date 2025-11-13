@@ -11,7 +11,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const campaign = await prisma.campaign.findUnique({
+    const campaign = await prisma.campaigns.findUnique({
       where: { id: params.id },
       include: {
         instance: true,
@@ -20,7 +20,7 @@ export async function GET(
           include: {
             contact: true,
           },
-          orderBy: { createdAt: 'desc' },
+          orderBy: { created_at: 'desc' },
         },
       },
     });
@@ -75,7 +75,7 @@ export async function PATCH(
       updateData.scheduledAt = scheduledAt ? new Date(scheduledAt) : null;
     }
 
-    const campaign = await prisma.campaign.update({
+    const campaign = await prisma.campaigns.update({
       where: { id: params.id },
       data: updateData,
     });
@@ -103,7 +103,7 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    await prisma.campaign.delete({
+    await prisma.campaigns.delete({
       where: { id: params.id },
     });
 

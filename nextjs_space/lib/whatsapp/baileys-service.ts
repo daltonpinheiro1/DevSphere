@@ -49,7 +49,7 @@ class BaileysService {
    */
   async createInstance(
     name: string,
-    companyId?: string,
+    company_id?: string,
     chatbotId?: string,
     messagesPerBatch?: number,
     proxyUrl?: string,
@@ -59,12 +59,12 @@ class BaileysService {
       const instance = await prisma.whatsAppInstance.create({
         data: {
           name,
-          companyId,
+          company_id,
           companyName,
           chatbotId,
           status: 'disconnected',
           autoReply: true,
-          isActive: true,
+          is_active: true,
           messagesPerBatch: messagesPerBatch || 50,
           proxyUrl: proxyUrl || null,
         },
@@ -88,7 +88,7 @@ class BaileysService {
       messagesPerBatch?: number;
       proxyUrl?: string | null;
       autoReply?: boolean;
-      isActive?: boolean;
+      is_active?: boolean;
       status?: string;
     }
   ) {
@@ -115,8 +115,8 @@ class BaileysService {
         updateData.autoReply = config.autoReply;
       }
       
-      if (config.isActive !== undefined) {
-        updateData.isActive = config.isActive;
+      if (config.is_active !== undefined) {
+        updateData.is_active = config.is_active;
       }
       
       if (config.status !== undefined) {
@@ -335,7 +335,7 @@ class BaileysService {
    */
   async getAllInstances() {
     return await prisma.whatsAppInstance.findMany({
-      orderBy: { createdAt: 'desc' },
+      orderBy: { created_at: 'desc' },
     });
   }
 

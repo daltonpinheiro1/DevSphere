@@ -16,16 +16,16 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const users = await prisma.user.findMany({
+    const users = await prisma.users.findMany({
       select: {
         id: true,
         name: true,
         email: true,
         role: true,
         avatar: true,
-        isActive: true,
-        createdAt: true,
-        updatedAt: true,
+        is_active: true,
+        created_at: true,
+        updated_at: true,
         _count: {
           select: {
             conversations: true,
@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
         },
       },
       orderBy: {
-        createdAt: "desc",
+        created_at: "desc",
       },
     });
 
