@@ -15,9 +15,11 @@ datasource db {
 
 // User Authentication and Management
 enum UserRole {
-  ADMIN
-  USER
-  GUEST
+  ADMIN       // Administrador: cria contas e designa gerentes
+  MANAGER     // Gerente: cria acessos e configurações
+  ASSISTANT   // Auxiliar: acesso restrito às conversas
+  USER        // Usuário padrão
+  GUEST       // Visitante
 }
 
 model User {
@@ -28,11 +30,16 @@ model User {
   role         UserRole @default(USER)
   avatar       String?
   isActive     Boolean  @default(true) @map("is_active")
+  createdBy    String?  @map("created_by") // ID do usuário que criou esta conta
+  companyId    String?  @map("company_id") // ID da empresa do usuário
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
   
   conversations Conversation[]
   settings      Settings?
+  whatsappConversations WhatsAppConversation[] @relation("AssignedAgent")
+  createdUsers User[] @relation("UserCreator")
+  creator      User?  @relation("UserCreator", fields: [createdBy], references: [id])
   
   @@map("users")
 }
@@ -244,4 +251,76 @@ model ProxyServer {
   updatedAt       DateTime @updatedAt @map("updated_at")
   
   @@map("proxy_servers")
+}
+
+// Gerenciamento de Conversas do WhatsApp
+enum ConversationStatus {
+  ACTIVE      // Conversa ativa
+  CLOSED      // Conversa encerrada
+  REOPENED    // Conversa reaberta
+}
+
+enum TabulationReason {
+  SALE_MADE               // Venda realizada
+  CONSIDERED_EXPENSIVE    // Considerou caro
+  REFUSED_NO_REASON       // Recusou sem justificar
+  NO_INTEREST_PLAN        // Não tem interesse no plano
+  INTEREST_INTERNET_ONLY  // Interesse apenas na internet
+  INTEREST_PLAN_ONLY      // Interesse apenas no plano
+}
+
+enum SaleType {
+  INTERNET         // Plano de Internet
+  HEALTH_PLAN      // Plano de Saúde
+  COMBO            // Combo (Internet + Plano)
+  OTHER            // Outro tipo
+}
+
+model WhatsAppConversation {
+  id              String   @id @default(cuid())
+  instanceId      String   @map("instance_id")
+  contactPhone    String   @map("contact_phone") // Telefone do contato
+  contactName     String?  @map("contact_name")
+  status          ConversationStatus @default(ACTIVE)
+  
+  // Atribuição e Tabulação
+  assignedTo      String?  @map("assigned_to") // ID do agente responsável
+  tabulationReason TabulationReason? @map("tabulation_reason")
+  saleType        SaleType? @map("sale_type")
+  salePlanName    String?  @map("sale_plan_name") // Nome do plano vendido
+  notes           String?  @db.Text // Observações adicionais
+  
+  // Timestamps de controle
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  closedAt        DateTime? @map("closed_at")
+  lastMessageAt   DateTime @default(now()) @map("last_message_at")
+  tabulatedAt     DateTime? @map("tabulated_at")
+  
+  // Relações
+  agent           User?    @relation("AssignedAgent", fields: [assignedTo], references: [id])
+  messages        WhatsAppConversationMessage[]
+  
+  @@unique([instanceId, contactPhone])
+  @@index([status])
+  @@index([assignedTo])
+  @@index([tabulatedAt])
+  @@index([lastMessageAt])
+  @@map("whatsapp_conversations")
+}
+
+model WhatsAppConversationMessage {
+  id              String   @id @default(cuid())
+  conversationId  String   @map("conversation_id")
+  messageId       String   @map("message_id") // ID da mensagem no WhatsApp
+  fromMe          Boolean  @map("from_me")
+  content         String   @db.Text
+  messageType     String   @default("text") @map("message_type") // text, image, audio, video, document
+  timestamp       DateTime @default(now())
+  
+  conversation    WhatsAppConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  
+  @@unique([conversationId, messageId])
+  @@index([conversationId])
+  @@map("whatsapp_conversation_messages")
 }
