@@ -28,7 +28,7 @@ interface Proxy {
   successRate: number;
   totalUses: number;
   totalFailures: number;
-  createdAt: string;
+  created_at: string;
 }
 
 export default function ProxiesManager() {

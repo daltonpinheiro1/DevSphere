@@ -2,6 +2,7 @@
 import { WhatsAppInstanceManager } from './instance-manager';
 import { prisma } from '../db';
 import { SendMessageOptions, BulkSendOptions, WebhookMessage } from './types';
+import { v4 as uuidv4 } from 'uuid';
 
 /**
  * Serviço principal de gerenciamento do Baileys
@@ -81,7 +82,7 @@ class BaileysService {
    * Atualiza configurações de uma instância
    */
   async updateInstanceConfig(
-    instanceId: string,
+    instance_id: string,
     config: {
       name?: string;
       companyName?: string;
@@ -222,7 +223,7 @@ class BaileysService {
    */
   async sendMessage(options: SendMessageOptions): Promise<boolean> {
     try {
-      const manager = this.instances.get(options.instanceId);
+      const manager = this.instances.get(options.instance_id);
 
       if (!manager || !manager.isConnected()) {
         throw new Error('Instância não conectada');
@@ -233,7 +234,7 @@ class BaileysService {
         await this.sleep(options.delayMs);
       }
 
-      return await manager.sendMessage(options.to, options.message, options.mediaUrl);
+      return await manager.sendMessage(options.to, options.message, options.media_url);
     } catch (error) {
       console.error('Erro ao enviar mensagem:', error);
       return false;
@@ -262,9 +263,9 @@ class BaileysService {
         try {
           // Enviar mensagem
           const success = await manager.sendMessage(
-            contact.phoneNumber,
+            contact.phone_number,
             contact.message,
-            contact.mediaUrl
+            contact.media_url
           );
 
           if (success) {
@@ -286,7 +287,7 @@ class BaileysService {
           }
         } catch (error) {
           console.error(
-            `Erro ao enviar para ${contact.phoneNumber}:`,
+            `Erro ao enviar para ${contact.phone_number}:`,
             error
           );
           failed++;
@@ -309,7 +310,7 @@ class BaileysService {
    * Registra handler para mensagens recebidas de uma instância
    */
   registerMessageHandler(
-    instanceId: string,
+    instance_id: string,
     handler: (msg: WebhookMessage) => void
   ): void {
     this.messageHandlers.set(instanceId, handler);
@@ -319,13 +320,13 @@ class BaileysService {
    * Processa mensagens recebidas
    */
   private handleIncomingMessage(message: WebhookMessage): void {
-    const handler = this.messageHandlers.get(message.instanceId);
+    const handler = this.messageHandlers.get(message.instance_id);
 
     if (handler) {
       handler(message);
     } else {
       console.log(
-        `Nenhum handler registrado para instância ${message.instanceId}`
+        `Nenhum handler registrado para instância ${message.instance_id}`
       );
     }
   }

@@ -14,11 +14,11 @@ export async function GET(
     const campaign = await prisma.campaigns.findUnique({
       where: { id: params.id },
       include: {
-        instance: true,
+        whatsapp_instances: true,
         template: true,
-        messages: {
+        campaign_messages: {
           include: {
-            contact: true,
+        contacts: true,
           },
           orderBy: { created_at: 'desc' },
         },
@@ -34,10 +34,10 @@ export async function GET(
 
     // Estatísticas
     const stats = {
-      total: campaign.totalContacts,
-      sent: campaign.sentCount,
-      failed: campaign.failedCount,
-      pending: campaign.totalContacts - campaign.sentCount - campaign.failedCount,
+      total: campaign.total_contacts,
+      sent: campaign.sent_count,
+      failed: campaign.failed_count,
+      pending: campaign.total_contacts - campaign.sent_count - campaign.failed_count,
     };
 
     return NextResponse.json({
@@ -70,9 +70,9 @@ export async function PATCH(
     if (name) updateData.name = name;
     if (intervalMin !== undefined) updateData.intervalMin = intervalMin;
     if (intervalMax !== undefined) updateData.intervalMax = intervalMax;
-    if (riskLevel) updateData.riskLevel = riskLevel;
+    if (riskLevel) updateData.risk_level = riskLevel;
     if (scheduledAt !== undefined) {
-      updateData.scheduledAt = scheduledAt ? new Date(scheduledAt) : null;
+      updateData.scheduled_at = scheduledAt ? new Date(scheduledAt) : null;
     }
 
     const campaign = await prisma.campaigns.update({

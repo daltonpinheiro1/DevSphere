@@ -18,7 +18,7 @@ export class AutoReplyHandler {
     try {
       // Buscar instância com chatbot
       const instance = await prisma.whatsapp_instances.findUnique({
-        where: { id: message.instanceId },
+        where: { id: message.instance_id },
         include: {
           chatbots: {
             include: {
@@ -29,19 +29,19 @@ export class AutoReplyHandler {
       });
 
       if (!instance) {
-        console.log(`Instância ${message.instanceId} não encontrada`);
+        console.log(`Instância ${message.instance_id} não encontrada`);
         return;
       }
 
       // Verificar se auto-reply está ativo
       if (!instance.auto_reply) {
-        console.log(`Auto-reply desativado para instância ${message.instanceId}`);
+        console.log(`Auto-reply desativado para instância ${message.instance_id}`);
         return;
       }
 
       // Salvar mensagem do usuário no cache
       await conversationCache.addMessage(
-        message.instanceId,
+        message.instance_id,
         message.from,
         'user',
         message.message
@@ -49,7 +49,7 @@ export class AutoReplyHandler {
 
       // Verificar se há fluxo de vendas ativo
       const hasActiveSalesFlow = await this.checkActiveSalesFlow(
-        message.instanceId,
+        message.instance_id,
         message.from
       );
 
@@ -58,7 +58,7 @@ export class AutoReplyHandler {
       if (hasActiveSalesFlow) {
         // Processar fluxo de vendas TIM
         const flowResponse = await timSalesFlow.handleMessage(
-          message.instanceId,
+          message.instance_id,
           message.from,
           message.message
         );
@@ -73,7 +73,7 @@ export class AutoReplyHandler {
         // Obter resposta do chatbot normal
         botResponse = await this.getChatbotResponse(
           message.message,
-          message.instanceId,
+          message.instance_id,
           message.from,
           instance.chatbots || undefined
         );
@@ -86,7 +86,7 @@ export class AutoReplyHandler {
 
       // Salvar resposta do bot no cache
       await conversationCache.addMessage(
-        message.instanceId,
+        message.instance_id,
         message.from,
         'assistant',
         botResponse
@@ -94,13 +94,13 @@ export class AutoReplyHandler {
 
       // Enviar resposta
       await baileysService.sendMessage({
-        instanceId: message.instanceId,
+        instance_id: message.instance_id,
         to: message.from,
         message: botResponse,
       });
 
       console.log(
-        `Resposta automática enviada para ${message.from} pela instância ${message.instanceId}`
+        `Resposta automática enviada para ${message.from} pela instância ${message.instance_id}`
       );
     } catch (error) {
       console.error('Erro ao processar resposta automática:', error);
@@ -111,7 +111,7 @@ export class AutoReplyHandler {
    * Verifica se há fluxo de vendas ativo para o contato
    */
   private async checkActiveSalesFlow(
-    instanceId: string,
+    instance_id: string,
     contactPhone: string
   ): Promise<boolean> {
     try {
@@ -163,7 +163,7 @@ export class AutoReplyHandler {
    */
   private async getChatbotResponse(
     message: string,
-    instanceId: string,
+    instance_id: string,
     contactPhone: string,
     chatbot?: any
   ): Promise<string | null> {

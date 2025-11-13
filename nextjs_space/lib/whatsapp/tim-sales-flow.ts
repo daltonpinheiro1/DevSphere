@@ -2,6 +2,7 @@
 import { prisma } from '../db';
 import { timApi } from './tim-api';
 import { conversationCache } from './conversation-cache';
+import { v4 as uuidv4 } from 'uuid';
 
 type FlowStage =
   | 'initial'
@@ -60,7 +61,7 @@ export class TIMSalesFlowManager {
   }
 
   async handleMessage(
-    instanceId: string,
+    instance_id: string,
     contactPhone: string,
     message: string
   ): Promise<FlowResponse> {

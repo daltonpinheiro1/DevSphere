@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
     const proxies = await prisma.proxy_servers.findMany({
       orderBy: [
         { status: 'asc' },
-        { responseTime: 'asc' }
+        { response_time: 'asc' }
       ]
     });
 

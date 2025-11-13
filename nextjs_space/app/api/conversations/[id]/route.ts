@@ -2,6 +2,7 @@
 export const dynamic = 'force-dynamic'
 
 import { NextRequest, NextResponse } from 'next/server'
+import { v4 as uuidv4 } from 'uuid';
 import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()

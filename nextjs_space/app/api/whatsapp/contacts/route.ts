@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
 
     if (search) {
       where.OR = [
-        { phoneNumber: { contains: search } },
+        { phone_number: { contains: search } },
         { name: { contains: search, mode: 'insensitive' } },
       ];
     }
@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
       orderBy: { created_at: 'desc' },
       include: {
         _count: {
-          select: { campaignMessages: true },
+          select: { campaign_campaign_messages: true },
         },
       },
     });
@@ -95,8 +95,8 @@ export async function POST(request: NextRequest) {
 
     const contact = await prisma.contacts.upsert({
       where: {
-        phoneNumber_companyId: {
-          phoneNumber: formattedNumber,
+        phone_number_company_id: {
+          phone_number: formattedNumber,
           company_id: company_id || null,
         },
       },
@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
         metadata: metadata || undefined,
       },
       create: {
-        phoneNumber: formattedNumber,
+        phone_number: formattedNumber,
         name,
         company_id,
         metadata: metadata || undefined,

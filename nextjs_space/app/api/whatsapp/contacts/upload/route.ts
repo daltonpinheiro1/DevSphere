@@ -67,8 +67,8 @@ export async function POST(request: NextRequest) {
 
         await prisma.contacts.upsert({
           where: {
-            phoneNumber_companyId: {
-              phoneNumber: formattedNumber,
+            phone_number_company_id: {
+              phone_number: formattedNumber,
               company_id: company_id || null as any,
             },
           },
@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
             name: name || undefined,
           },
           create: {
-            phoneNumber: formattedNumber,
+            phone_number: formattedNumber,
             name,
             company_id: company_id || undefined,
           },

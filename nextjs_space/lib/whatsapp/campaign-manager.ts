@@ -41,7 +41,7 @@ class CampaignManager {
       }
 
       // Verificar se instância está conectada
-      if (!baileysService.isInstanceConnected(campaign.instanceId)) {
+      if (!baileysService.isInstanceConnected(campaign.instance_id)) {
         throw new Error('Instância WhatsApp não está conectada');
       }
 
@@ -108,16 +108,16 @@ class CampaignManager {
 
           // Gerar URL assinada se houver mídia
           let mediaUrl = undefined;
-          if (campaign.template?.mediaUrl) {
-            mediaUrl = await downloadFile(campaign.template.mediaUrl);
+          if (campaign.template?.media_url) {
+            mediaUrl = await downloadFile(campaign.template.media_url);
           }
 
           // Enviar mensagem (com mídia se disponível)
           const success = await baileysService.sendMessage({
-            instanceId: campaign.instanceId,
-            to: campaignMessage.contact.phoneNumber,
-            message: campaignMessage.messageContent,
-            mediaUrl: mediaUrl,
+            instance_id: campaign.instance_id,
+            to: campaignMessage.contact.phone_number,
+            message: campaignMessage.message_content,
+            media_url: mediaUrl,
           });
 
           if (success) {
@@ -159,7 +159,7 @@ class CampaignManager {
           const delay = this.getRandomDelay(
             campaign.intervalMin,
             campaign.intervalMax,
-            campaign.riskLevel
+            campaign.risk_level
           );
           await this.sleep(delay * 1000);
         } catch (error) {
@@ -239,7 +239,7 @@ class CampaignManager {
   private getRandomDelay(
     min: number,
     max: number,
-    riskLevel: string
+    risk_level: string
   ): number {
     // Ajustar intervalos baseado no risco
     let adjustedMin = min;

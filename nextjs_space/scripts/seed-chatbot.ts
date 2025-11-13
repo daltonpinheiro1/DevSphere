@@ -21,6 +21,7 @@ async function main() {
   // Criar chatbot
   const chatbot = await prisma.chatbots.create({
     data: {
+      id: uuidv4(),
       name: 'Centermed - Assistente Virtual',
       description: 'Assistente virtual oficial da Centermed especializado em atendimento ao cliente sobre o Clube de Serviços (Planos de Saúde, Internet e Combos)',
       system_prompt: `Você é o assistente virtual oficial da Centermed, especializado em atendimento ao cliente sobre o Clube de Serviços da Centermed.

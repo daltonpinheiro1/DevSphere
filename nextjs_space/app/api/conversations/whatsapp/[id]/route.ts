@@ -1,5 +1,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
+import { v4 as uuidv4 } from 'uuid';
 import { prisma } from '@/lib/db';
 
 /**
@@ -14,14 +15,14 @@ export async function GET(
     const conversation = await prisma.whatsapp_conversations.findUnique({
       where: { id: params.id },
       include: {
-        agent: {
+        users: {
           select: {
             id: true,
             name: true,
             email: true,
           },
         },
-        messages: {
+        campaign_messages: {
           orderBy: {
             timestamp: 'asc',
           },
@@ -89,7 +90,7 @@ export async function PATCH(
       where: { id: params.id },
       data: updateData,
       include: {
-        agent: {
+        users: {
           select: {
             id: true,
             name: true,

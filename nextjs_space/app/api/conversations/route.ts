@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic'
 
 import { NextRequest, NextResponse } from 'next/server'
 import { PrismaClient } from '@prisma/client'
+import { v4 as uuidv4 } from 'uuid';
 
 const prisma = new PrismaClient()
 
@@ -12,7 +13,7 @@ export async function GET() {
       orderBy: { created_at: 'desc' },
       include: {
         _count: {
-          select: { messages: true }
+          select: { campaign_messages: true }
         }
       }
     })
@@ -33,7 +34,9 @@ export async function POST(request: NextRequest) {
 
     const conversation = await prisma.conversations.create({
       data: {
-        title: title || 'Nova Conversa'
+        id: uuidv4(),
+        title: title || 'Nova Conversa',
+        updated_at: new Date()
       }
     })
 

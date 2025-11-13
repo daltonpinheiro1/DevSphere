@@ -1,6 +1,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { v4 as uuidv4 } from 'uuid';
 
 /**
  * GET /api/conversations/whatsapp
@@ -16,15 +17,15 @@ export async function GET(request: NextRequest) {
 
     const where: any = {};
     if (status) where.status = status;
-    if (assignedTo) where.assignedTo = assignedTo;
-    if (instanceId) where.instanceId = instanceId;
+    if (assignedTo) where.assigned_to = assignedTo;
+    if (instanceId) where.instance_id = instanceId;
 
     // Conversas que precisam de tabulação (fechadas há mais de 2 horas sem tabulação)
     if (needsTabulation === 'true') {
       const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
       where.status = 'CLOSED';
-      where.tabulatedAt = null;
-      where.closedAt = {
+      where.tabulated_at = null;
+      where.closed_at = {
         lte: twoHoursAgo,
       };
     }
@@ -32,14 +33,14 @@ export async function GET(request: NextRequest) {
     const conversations = await prisma.whatsapp_conversations.findMany({
       where,
       include: {
-        agent: {
+        users: {
           select: {
             id: true,
             name: true,
             email: true,
           },
         },
-        messages: {
+        whatsapp_conversation_campaign_messages: {
           orderBy: {
             timestamp: 'desc',
           },
@@ -47,7 +48,7 @@ export async function GET(request: NextRequest) {
         },
       },
       orderBy: {
-        lastMessageAt: 'desc', // Mais antigas primeiro quando fechadas
+        last_message_at: 'desc', // Mais antigas primeiro quando fechadas
       },
     });
 
@@ -56,11 +57,11 @@ export async function GET(request: NextRequest) {
       let needsAlert = false;
       if (
         conv.status === 'CLOSED' &&
-        !conv.tabulatedAt &&
-        conv.closedAt
+        !conv.tabulated_at &&
+        conv.closed_at
       ) {
         const hoursSinceClosed =
-          (Date.now() - conv.closedAt.getTime()) / (1000 * 60 * 60);
+          (Date.now() - conv.closed_at.getTime()) / (1000 * 60 * 60);
         needsAlert = hoursSinceClosed >= 2;
       }
       return {
@@ -98,8 +99,8 @@ export async function POST(request: NextRequest) {
     // Verificar se já existe conversa ativa
     const existingConv = await prisma.whatsapp_conversations.findFirst({
       where: {
-        instanceId,
-        contactPhone,
+        instance_id: instanceId,
+        contact_phone: contactPhone,
         status: 'ACTIVE',
       },
     });
@@ -111,15 +112,17 @@ export async function POST(request: NextRequest) {
     // Criar nova conversa
     const conversation = await prisma.whatsapp_conversations.create({
       data: {
-        instanceId,
-        contactPhone,
-        contactName,
-        assignedTo,
+        id: uuidv4(),
+        instance_id: instanceId,
+        contact_phone: contactPhone,
+        contact_name: contactName,
+        assigned_to: assignedTo,
         status: 'ACTIVE',
-        lastMessageAt: new Date(),
+        last_message_at: new Date(),
+        updated_at: new Date(),
       },
       include: {
-        agent: {
+        users: {
           select: {
             id: true,
             name: true,

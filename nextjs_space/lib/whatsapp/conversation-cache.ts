@@ -8,7 +8,7 @@ interface ConversationMessage {
 }
 
 interface ConversationContext {
-  instanceId: string;
+  instance_id: string;
   contactPhone: string;
   messages: ConversationMessage[];
   lastUpdated: number;
@@ -22,7 +22,7 @@ export class ConversationCache {
   }
 
   async getConversation(
-    instanceId: string,
+    instance_id: string,
     contactPhone: string
   ): Promise<ConversationContext | null> {
     const key = this.getCacheKey(instanceId, contactPhone);
@@ -46,7 +46,7 @@ export class ConversationCache {
   }
 
   async addMessage(
-    instanceId: string,
+    instance_id: string,
     contactPhone: string,
     role: 'user' | 'assistant',
     content: string
@@ -80,7 +80,7 @@ export class ConversationCache {
   }
 
   async getRecentMessages(
-    instanceId: string,
+    instance_id: string,
     contactPhone: string,
     limit: number = 10
   ): Promise<ConversationMessage[]> {
@@ -93,7 +93,7 @@ export class ConversationCache {
   }
 
   async clearConversation(
-    instanceId: string,
+    instance_id: string,
     contactPhone: string
   ): Promise<void> {
     const key = this.getCacheKey(instanceId, contactPhone);
@@ -101,7 +101,7 @@ export class ConversationCache {
   }
 
   async buildContextForAI(
-    instanceId: string,
+    instance_id: string,
     contactPhone: string
   ): Promise<string> {
     const messages = await this.getRecentMessages(instanceId, contactPhone, 10);

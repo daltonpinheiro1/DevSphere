@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import bcrypt from 'bcryptjs';
+import { v4 as uuidv4 } from 'uuid';
 
 /**
  * GET /api/admin/users
@@ -30,7 +31,7 @@ export async function GET(request: NextRequest) {
         created_by: true,
         created_at: true,
         updated_at: true,
-        creator: {
+        users: {
           select: {
             name: true,
             email: true,
@@ -109,6 +110,7 @@ export async function POST(request: NextRequest) {
     // Criar usuário
     const user = await prisma.users.create({
       data: {
+        id: uuidv4(),
         name,
         email,
         password_hash,
@@ -116,6 +118,7 @@ export async function POST(request: NextRequest) {
         company_id,
         created_by,
         is_active: true,
+        updated_at: new Date(),
       },
       select: {
         id: true,

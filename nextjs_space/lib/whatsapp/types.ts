@@ -11,7 +11,7 @@ export interface WhatsAppInstanceData {
 }
 
 export interface SendMessageOptions {
-  instanceId: string;
+  instance_id: string;
   to: string; // Número no formato 5531999887766
   message: string;
   delayMs?: number;
@@ -19,9 +19,9 @@ export interface SendMessageOptions {
 }
 
 export interface BulkSendOptions {
-  instanceId: string;
+  instance_id: string;
   contacts: Array<{
-    phoneNumber: string;
+    phone_number: string;
     message: string;
     variables?: Record<string, string>;
     mediaUrl?: string;
@@ -32,9 +32,9 @@ export interface BulkSendOptions {
 }
 
 export interface WebhookMessage {
-  instanceId: string;
+  instance_id: string;
   from: string;
   message: string;
-  messageId: string;
+  message_id: string;
   timestamp: Date;
 }

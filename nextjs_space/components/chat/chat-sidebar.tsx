@@ -47,7 +47,7 @@ export function ChatSidebar({
 
   // Group conversations by date
   const groupedConversations = conversations?.reduce((groups, conversation) => {
-    const date = new Date(conversation.createdAt)
+    const date = new Date(conversation.created_at)
     const today = new Date()
     const yesterday = new Date(today)
     yesterday.setDate(yesterday.getDate() - 1)
@@ -167,7 +167,7 @@ export function ChatSidebar({
                           <div className="flex items-center space-x-2 mt-1">
                             <Clock className="h-3 w-3 opacity-60" />
                             <span className="text-xs opacity-60">
-                              {formatDistanceToNow(new Date(conversation.createdAt), {
+                              {formatDistanceToNow(new Date(conversation.created_at), {
                                 addSuffix: true,
                                 locale: ptBR
                               })}

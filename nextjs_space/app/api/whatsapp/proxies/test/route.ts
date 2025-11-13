@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
         port: proxy.port,
         country: proxy.country,
         status: proxy.status,
-        responseTime: proxy.responseTime,
+        response_time: proxy.response_time,
         isHealthy
       });
     }
@@ -36,8 +36,8 @@ export async function POST(req: NextRequest) {
         active: activeCount,
         inactive: inactiveCount,
         avgResponseTime: results
-          .filter(r => r.responseTime)
-          .reduce((acc, r) => acc + (r.responseTime || 0), 0) / activeCount || 0
+          .filter(r => r.response_time)
+          .reduce((acc, r) => acc + (r.response_time || 0), 0) / activeCount || 0
       },
       results
     });

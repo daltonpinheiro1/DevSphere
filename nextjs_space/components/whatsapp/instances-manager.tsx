@@ -136,7 +136,7 @@ export function InstancesManager() {
           messagesPerBatch,
           proxyUrl: proxyUrl || undefined,
           chatbotId,
-          companyId: companyId || undefined,
+          company_id: companyId || undefined,
         }),
       });
 
@@ -587,9 +587,9 @@ export function InstancesManager() {
                           {getStatusBadge(instance.status)}
                         </CardTitle>
                         <div className="space-y-1 mt-2">
-                          {instance.phoneNumber && (
+                          {instance.phone_number && (
                             <p className="text-sm text-blue-600 font-semibold">
-                              📱 {instance.phoneNumber}
+                              📱 {instance.phone_number}
                             </p>
                           )}
                           {instance.companyName && (
@@ -702,11 +702,11 @@ export function InstancesManager() {
                     </div>
 
                     {/* Botão Adquira Já! */}
-                    {instance.status === 'connected' && instance.phoneNumber && (
+                    {instance.status === 'connected' && instance.phone_number && (
                       <div className="mt-3 pt-3 border-t">
                         <Button
                           size="sm"
-                          onClick={() => startSalesFlow(instance.id, instance.phoneNumber!)}
+                          onClick={() => startSalesFlow(instance.id, instance.phone_number!)}
                           className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600"
                         >
                           <ShoppingCart className="w-4 h-4 mr-2" />

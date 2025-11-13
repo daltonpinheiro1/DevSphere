@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { v4 as uuidv4 } from 'uuid';
 
 const prisma = new PrismaClient();
 
@@ -30,13 +31,17 @@ export async function POST(request: NextRequest) {
     // Hash password
     const password_hash = await bcrypt.hash(password, 10);
 
+    const userId = uuidv4();
+
     // Create user
     const user = await prisma.users.create({
       data: {
+        id: userId,
         name,
         email,
         password_hash,
         role: "USER",
+        updated_at: new Date(),
       },
       select: {
         id: true,
@@ -50,7 +55,9 @@ export async function POST(request: NextRequest) {
     // Create default settings for user
     await prisma.settings.create({
       data: {
-        userId: user.id,
+        id: uuidv4(),
+        user_id: user.id,
+        updated_at: new Date(),
       },
     });
 

@@ -1,6 +1,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { v4 as uuidv4 } from 'uuid';
 
 /**
  * GET /api/whatsapp/campaigns
@@ -20,22 +21,22 @@ export async function GET(request: NextRequest) {
       where,
       orderBy: { created_at: 'desc' },
       include: {
-        instance: {
+        whatsapp_instances: {
           select: {
             id: true,
             name: true,
-            phoneNumber: true,
+            phone_number: true,
             status: true,
           },
         },
-        template: {
+        message_templates: {
           select: {
             id: true,
             name: true,
           },
         },
         _count: {
-          select: { messages: true },
+          select: { campaign_messages: true },
         },
       },
     });
@@ -94,15 +95,16 @@ export async function POST(request: NextRequest) {
     // Criar campanha
     const campaign = await prisma.campaigns.create({
       data: {
+        id: uuidv4(),
         name,
         instanceId,
         templateId,
         status: scheduledAt ? 'scheduled' : 'draft',
-        totalContacts: contacts.length,
-        intervalMin: intervalMin || 3,
-        intervalMax: intervalMax || 10,
-        riskLevel: riskLevel || 'medium',
-        scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
+        total_contacts: contacts.length,
+        interval_min: intervalMin || 3,
+        interval_max: intervalMax || 10,
+        risk_level: riskLevel || 'medium',
+        scheduled_at: scheduledAt ? new Date(scheduledAt) : null,
         company_id,
         created_by,
       },
@@ -113,21 +115,21 @@ export async function POST(request: NextRequest) {
 
     for (const contactData of contacts) {
       // Buscar ou criar contato
-      const cleanedNumber = contactData.phoneNumber.replace(/\D/g, '');
+      const cleanedNumber = contactData.phone_number.replace(/\D/g, '');
       const formattedNumber = cleanedNumber.startsWith('55')
         ? cleanedNumber
         : `55${cleanedNumber}`;
 
       const contact = await prisma.contacts.upsert({
         where: {
-          phoneNumber_companyId: {
-            phoneNumber: formattedNumber,
+          phone_number_company_id: {
+            phone_number: formattedNumber,
             company_id: company_id || null,
           },
         },
         update: {},
         create: {
-          phoneNumber: formattedNumber,
+          phone_number: formattedNumber,
           name: contactData.name,
           company_id,
         },
@@ -147,8 +149,8 @@ export async function POST(request: NextRequest) {
       }
 
       campaignMessages.push({
-        campaignId: campaign.id,
-        contactId: contact.id,
+        campaign_id: campaign.id,
+        contact_id: contact.id,
         messageContent,
         status: 'pending',
       });

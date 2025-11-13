@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { uploadFile } from '@/lib/s3';
+import { v4 as uuidv4 } from 'uuid';
 
 export async function GET(
   request: NextRequest,

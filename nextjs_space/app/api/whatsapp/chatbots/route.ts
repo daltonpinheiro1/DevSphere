@@ -1,6 +1,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { v4 as uuidv4 } from 'uuid';
 
 // GET /api/whatsapp/chatbots - Listar chatbots disponíveis
 export async function GET(req: NextRequest) {
@@ -41,6 +42,7 @@ export async function POST(req: NextRequest) {
 
     const chatbot = await prisma.chatbots.create({
       data: {
+       id: uuidv4(),
         id: `chatbot_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         name,
         description: description || null,

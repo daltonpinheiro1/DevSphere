@@ -25,13 +25,13 @@ export async function GET(
         created_by: true,
         created_at: true,
         updated_at: true,
-        creator: {
+        users: {
           select: {
             name: true,
             email: true,
           },
         },
-        createdUsers: {
+        other_users: {
           select: {
             id: true,
             name: true,

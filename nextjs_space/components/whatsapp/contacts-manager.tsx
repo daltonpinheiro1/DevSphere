@@ -171,10 +171,10 @@ export default function ContactsManager() {
                 <div key={contact.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                   <div>
                     <p className="font-medium">{contact.name || 'Sem nome'}</p>
-                    <p className="text-sm text-gray-600">{contact.phoneNumber}</p>
+                    <p className="text-sm text-gray-600">{contact.phone_number}</p>
                   </div>
                   <div className="text-sm text-gray-500">
-                    {new Date(contact.createdAt).toLocaleDateString('pt-BR')}
+                    {new Date(contact.created_at).toLocaleDateString('pt-BR')}
                   </div>
                 </div>
               ))}

@@ -13,7 +13,7 @@ interface User {
   role: string;
   avatar?: string;
   isActive: boolean;
-  createdAt: string;
+  created_at: string;
   _count?: {
     conversations: number;
   };
@@ -86,7 +86,7 @@ export function UserTable({ users, onEdit, onDelete }: UserTableProps) {
                 {user._count?.conversations || 0}
               </TableCell>
               <TableCell className="text-slate-300">
-                {new Date(user.createdAt).toLocaleDateString("pt-BR")}
+                {new Date(user.created_at).toLocaleDateString("pt-BR")}
               </TableCell>
               <TableCell className="text-right">
                 <div className="flex justify-end gap-2">

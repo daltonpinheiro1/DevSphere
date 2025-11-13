@@ -64,7 +64,7 @@ export function useChat() {
 
     const userMessage: Message = {
       id: Date.now().toString(),
-      conversationId: currentConversation.id,
+      conversation_id: currentConversation.id,
       content,
       sender: 'user',
       timestamp: new Date().toISOString()
@@ -78,7 +78,7 @@ export function useChat() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          conversationId: currentConversation.id,
+          conversation_id: currentConversation.id,
           message: content
         })
       })
@@ -103,7 +103,7 @@ export function useChat() {
                   // Final message received
                   const aiMessage: Message = {
                     id: (Date.now() + 1).toString(),
-                    conversationId: currentConversation.id,
+                    conversation_id: currentConversation.id,
                     content: aiContent,
                     sender: 'ai',
                     timestamp: new Date().toISOString()
@@ -128,7 +128,7 @@ export function useChat() {
                       } else {
                         const tempAiMessage: Message = {
                           id: 'temp-ai',
-                          conversationId: currentConversation.id,
+                          conversation_id: currentConversation.id,
                           content: aiContent,
                           sender: 'ai',
                           timestamp: new Date().toISOString()
@@ -151,7 +151,7 @@ export function useChat() {
       console.error('Failed to send message:', error)
       setMessages(prev => [...prev, {
         id: (Date.now() + 1).toString(),
-        conversationId: currentConversation.id,
+        conversation_id: currentConversation.id,
         content: 'Desculpe, ocorreu um erro ao processar sua mensagem. Tente novamente.',
         sender: 'ai',
         timestamp: new Date().toISOString()

@@ -119,9 +119,9 @@ export default function TemplatesManager() {
         body: JSON.stringify({ 
           name, 
           content,
-          mediaType: mediaType,
-          mediaUrl: mediaUrl,
-          mediaName: mediaName
+          media_type: mediaType,
+          media_url: mediaUrl,
+          media_name: mediaName
         }),
       });
 
@@ -144,8 +144,8 @@ export default function TemplatesManager() {
     setEditingId(template.id);
     setName(template.name);
     setContent(template.content);
-    setMediaType(template.mediaType);
-    setMediaPreview(template.mediaUrl);
+    setMediaType(template.media_type);
+    setMediaPreview(template.media_url);
     setShowDialog(true);
   };
 
@@ -215,10 +215,10 @@ export default function TemplatesManager() {
                     </div>
                   </CardHeader>
                   <CardContent>
-                    {template.mediaUrl && template.mediaType === 'image' && (
+                    {template.media_url && template.media_type === 'image' && (
                       <div className="mb-3 relative w-full aspect-video bg-gray-100 rounded-lg overflow-hidden">
                         <Image
-                          src={template.mediaUrl}
+                          src={template.media_url}
                           alt={template.name}
                           fill
                           className="object-cover"
@@ -235,10 +235,10 @@ export default function TemplatesManager() {
                         ))}
                       </div>
                     )}
-                    {template.mediaType && (
+                    {template.media_type && (
                       <div className="mt-2 flex items-center gap-2">
                         <ImageIcon className="h-4 w-4 text-gray-500" />
-                        <span className="text-xs text-gray-500">{template.mediaName || 'Imagem anexada'}</span>
+                        <span className="text-xs text-gray-500">{template.media_name || 'Imagem anexada'}</span>
                       </div>
                     )}
                   </CardContent>

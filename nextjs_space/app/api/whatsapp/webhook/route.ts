@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
       instanceId,
       from,
       message,
-      messageId: messageId || `webhook-${Date.now()}`,
+      message_id: messageId || `webhook-${Date.now()}`,
       timestamp: timestamp ? new Date(timestamp) : new Date(),
     });
 

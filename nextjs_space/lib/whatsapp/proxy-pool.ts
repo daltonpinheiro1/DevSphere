@@ -9,6 +9,7 @@ import https from 'https';
 import http from 'http';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import { HttpProxyAgent } from 'http-proxy-agent';
+import { v4 as uuidv4 } from 'uuid';
 
 const prisma = new PrismaClient();
 
@@ -68,7 +69,7 @@ class ProxyPool {
    */
   async loadProxiesFromDB() {
     try {
-      const dbProxies = await prisma.proxyServer.findMany({
+      const dbProxies = await prisma.proxy_servers.findMany({
         // Carrega TODOS os proxies (ativos, inativos e em teste) para permitir testes
       });
 
@@ -132,7 +133,7 @@ class ProxyPool {
 
     try {
       // Salvar no banco
-      const dbProxy = await prisma.proxyServer.create({
+      const dbProxy = await prisma.proxy_servers.create({
         data: {
           url: proxyUrl,
           protocol: config.protocol,
@@ -166,7 +167,7 @@ class ProxyPool {
    */
   async removeProxy(proxyId: string): Promise<boolean> {
     try {
-      await prisma.proxyServer.delete({
+      await prisma.proxy_servers.delete({
         where: { id: proxyId }
       });
 
@@ -221,7 +222,7 @@ class ProxyPool {
     const newStatus = newSuccessRate < 20 ? 'inactive' : 'active';
 
     try {
-      await prisma.proxyServer.update({
+      await prisma.proxy_servers.update({
         where: { id: proxyId },
         data: {
           status: newStatus,
@@ -254,7 +255,7 @@ class ProxyPool {
     const newSuccessRate = Math.min(100, (proxy.successRate || 50) + 10);
 
     try {
-      await prisma.proxyServer.update({
+      await prisma.proxy_servers.update({
         where: { id: proxyId },
         data: {
           status: 'active',
@@ -332,7 +333,7 @@ class ProxyPool {
       const responseTime = Date.now() - startTime;
 
       // Atualiza status no banco
-      await prisma.proxyServer.update({
+      await prisma.proxy_servers.update({
         where: { id: proxy.id },
         data: {
           status: isHealthy ? 'active' : 'inactive',
@@ -355,7 +356,7 @@ class ProxyPool {
       
       // Marca como inativo
       if (proxy.id) {
-        await prisma.proxyServer.update({
+        await prisma.proxy_servers.update({
           where: { id: proxy.id },
           data: { status: 'inactive', lastChecked: new Date() }
         });
@@ -552,7 +553,7 @@ export async function setupOxylabsProxies() {
       const proxyUrl = `http://${username}:${OXYLABS_PASSWORD}@${OXYLABS_HOST}:${OXYLABS_PORT}`;
 
       // Verificar se já existe
-      const existing = await prisma.proxyServer.findFirst({
+      const existing = await prisma.proxy_servers.findFirst({
         where: {
           url: proxyUrl
         }
@@ -565,7 +566,7 @@ export async function setupOxylabsProxies() {
       }
 
       // Adicionar proxy ao banco
-      await prisma.proxyServer.create({
+      await prisma.proxy_servers.create({
         data: {
           url: proxyUrl,
           protocol: 'http',

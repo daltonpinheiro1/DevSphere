@@ -22,7 +22,7 @@ export async function GET(
 
     return NextResponse.json({
       success: true,
-      instance: {
+      whatsapp_instances: {
         ...instance,
         isConnectedNow: baileysService.isInstanceConnected(params.id),
       },

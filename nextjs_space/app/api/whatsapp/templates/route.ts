@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { downloadFile } from '@/lib/s3';
+import { v4 as uuidv4 } from 'uuid';
 
 /**
  * GET /api/whatsapp/templates
@@ -30,9 +31,9 @@ export async function GET(request: NextRequest) {
     // Gerar URLs assinadas para templates com mídia
     const templatesWithSignedUrls = await Promise.all(
       templates.map(async (template) => {
-        if (template.mediaUrl) {
-          const signedUrl = await downloadFile(template.mediaUrl);
-          return { ...template, mediaUrl: signedUrl };
+        if (template.media_url) {
+          const signedUrl = await downloadFile(template.media_url);
+          return { ...template, media_url: signedUrl };
         }
         return template;
       })
@@ -72,6 +73,7 @@ export async function POST(request: NextRequest) {
 
     const template = await prisma.message_templates.create({
       data: {
+        id: uuidv4(),
         name,
         content,
         variables: variables || extractedVariables,

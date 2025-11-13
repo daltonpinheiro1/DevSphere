@@ -1,5 +1,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
+import { v4 as uuidv4 } from 'uuid';
 import { prisma } from '@/lib/db';
 
 /**
@@ -24,19 +25,19 @@ export async function POST(
     // Criar mensagem
     const message = await prisma.whatsapp_conversation_messages.create({
       data: {
+        id: uuidv4(),
         conversation_id: params.id,
-        messageId,
-        fromMe,
+        message_id: messageId,
+        from_me: fromMe,
         content,
-        messageType: messageType || 'text',
-        timestamp: new Date(),
+        message_type: messageType || 'text',
       },
     });
 
     // Atualizar lastMessageAt da conversa
     await prisma.whatsapp_conversations.update({
       where: { id: params.id },
-      data: { lastMessageAt: new Date() },
+      data: { last_message_at: new Date() },
     });
 
     return NextResponse.json(message, { status: 201 });

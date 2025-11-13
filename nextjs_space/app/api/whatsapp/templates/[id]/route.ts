@@ -63,9 +63,9 @@ export async function PATCH(
       }
     }
     if (variables) updateData.variables = variables;
-    if (mediaType !== undefined) updateData.mediaType = mediaType;
-    if (mediaUrl !== undefined) updateData.mediaUrl = mediaUrl;
-    if (mediaName !== undefined) updateData.mediaName = mediaName;
+    if (mediaType !== undefined) updateData.media_type = mediaType;
+    if (mediaUrl !== undefined) updateData.media_url = mediaUrl;
+    if (mediaName !== undefined) updateData.media_name = mediaName;
 
     const template = await prisma.message_templates.update({
       where: { id: params.id },

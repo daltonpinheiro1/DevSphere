@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic'
 
 import { NextRequest, NextResponse } from 'next/server'
 import { PrismaClient } from '@prisma/client'
+import { v4 as uuidv4 } from 'uuid'
 
 const prisma = new PrismaClient()
 
@@ -20,6 +21,7 @@ export async function POST(request: NextRequest) {
     // Save user message to database
     await prisma.messages.create({
       data: {
+        id: uuidv4(),
         conversation_id,
         content: message,
         sender: 'user'
@@ -82,6 +84,7 @@ export async function POST(request: NextRequest) {
                   // Save AI response to database
                   await prisma.messages.create({
                     data: {
+                      id: uuidv4(),
                       conversation_id,
                       content: aiContent,
                       sender: 'ai'

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { PrismaClient } from "@prisma/client";
+import { v4 as uuidv4 } from 'uuid';
 
 const prisma = new PrismaClient();
 
@@ -13,10 +14,16 @@ export async function GET(request: NextRequest) {
     }
 
     const userId = (session.user as any)?.id;
-    let settings = await prisma.settings.findUnique({ where: { userId } });
+    let settings = await prisma.settings.findUnique({ where: { user_id: userId } });
 
     if (!settings) {
-      settings = await prisma.settings.create({ data: { userId } });
+      settings = await prisma.settings.create({ 
+        data: { 
+          id: uuidv4(),
+          user_id: userId,
+          updated_at: new Date()
+        } 
+      });
     }
 
     return NextResponse.json({ settings });
@@ -37,9 +44,14 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
 
     const settings = await prisma.settings.upsert({
-      where: { userId },
-      update: body,
-      create: { userId, ...body },
+      where: { user_id: userId },
+      update: { ...body, updated_at: new Date() },
+      create: { 
+        id: uuidv4(),
+        user_id: userId, 
+        ...body,
+        updated_at: new Date()
+      },
     });
 
     return NextResponse.json({ settings });

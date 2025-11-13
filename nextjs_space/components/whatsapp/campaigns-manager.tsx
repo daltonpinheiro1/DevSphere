@@ -74,7 +74,7 @@ export default function CampaignsManager() {
     const template = templates.find(t => t.id === selectedTemplate);
 
     const contactsData = selectedContacts.map(contact => ({
-      phoneNumber: contact.phoneNumber,
+      phone_number: contact.phone_number,
       message: template?.content || 'Olá!',
       name: contact.name,
       variables: {}
@@ -86,8 +86,8 @@ export default function CampaignsManager() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name,
-          instanceId: selectedInstance,
-          templateId: selectedTemplate || null,
+          instance_id: selectedInstance,
+          template_id: selectedTemplate || null,
           contacts: contactsData,
           intervalMin,
           intervalMax,
@@ -309,7 +309,7 @@ export default function CampaignsManager() {
                         }
                       }}
                     />
-                    <span className="text-sm">{c.name || c.phoneNumber}</span>
+                    <span className="text-sm">{c.name || c.phone_number}</span>
                   </label>
                 ))}
               </div>
