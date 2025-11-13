@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
       orderBy: { created_at: 'desc' },
       include: {
         _count: {
-          select: { campaign_campaign_messages: true },
+          select: { campaign_messages: true },
         },
       },
     });

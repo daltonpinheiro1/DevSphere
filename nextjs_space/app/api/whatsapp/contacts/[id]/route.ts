@@ -14,9 +14,9 @@ export async function GET(
     const contact = await prisma.contacts.findUnique({
       where: { id: params.id },
       include: {
-        campaign_campaign_messages: {
+        campaign_messages: {
           include: {
-        campaigns: true,
+            campaigns: true,
           },
           orderBy: { created_at: 'desc' },
           take: 10,

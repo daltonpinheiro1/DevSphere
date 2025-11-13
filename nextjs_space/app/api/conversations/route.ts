@@ -13,7 +13,7 @@ export async function GET() {
       orderBy: { created_at: 'desc' },
       include: {
         _count: {
-          select: { campaign_messages: true }
+          select: { messages: true }
         }
       }
     })

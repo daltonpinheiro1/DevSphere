@@ -42,8 +42,7 @@ export async function POST(req: NextRequest) {
 
     const chatbot = await prisma.chatbots.create({
       data: {
-       id: uuidv4(),
-        id: `chatbot_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        id: uuidv4(),
         name,
         description: description || null,
         system_prompt,

@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
             email: true,
           },
         },
-        whatsapp_conversation_campaign_messages: {
+        whatsapp_conversation_messages: {
           orderBy: {
             timestamp: 'desc',
           },
