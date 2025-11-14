@@ -18,5 +18,3 @@ out
 .deploy
 .logs
 *.tsbuildinfo
-core
-nextjs_space/core
