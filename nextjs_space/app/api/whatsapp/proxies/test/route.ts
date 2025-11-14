@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
         port: proxy.port,
         country: proxy.country,
         status: proxy.status,
-        response_time: proxy.response_time,
+        response_time: proxy.responseTime || 0,
         isHealthy
       });
     }

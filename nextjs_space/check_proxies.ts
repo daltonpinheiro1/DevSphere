@@ -4,7 +4,7 @@ const prisma = new PrismaClient();
 
 async function main() {
   try {
-    const proxies = await prisma.proxyServer.findMany();
+    const proxies = await prisma.proxy_servers.findMany();
     console.log(`\n✅ Total de proxies: ${proxies.length}\n`);
     
     if (proxies.length === 0) {

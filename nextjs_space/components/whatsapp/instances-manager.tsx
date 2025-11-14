@@ -587,9 +587,9 @@ export function InstancesManager() {
                           {getStatusBadge(instance.status)}
                         </CardTitle>
                         <div className="space-y-1 mt-2">
-                          {instance.phone_number && (
+                          {instance.phoneNumber && (
                             <p className="text-sm text-blue-600 font-semibold">
-                              📱 {instance.phone_number}
+                              📱 {instance.phoneNumber}
                             </p>
                           )}
                           {instance.companyName && (
@@ -702,11 +702,11 @@ export function InstancesManager() {
                     </div>
 
                     {/* Botão Adquira Já! */}
-                    {instance.status === 'connected' && instance.phone_number && (
+                    {instance.status === 'connected' && instance.phoneNumber && (
                       <div className="mt-3 pt-3 border-t">
                         <Button
                           size="sm"
-                          onClick={() => startSalesFlow(instance.id, instance.phone_number!)}
+                          onClick={() => startSalesFlow(instance.id, instance.phoneNumber!)}
                           className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600"
                         >
                           <ShoppingCart className="w-4 h-4 mr-2" />

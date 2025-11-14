@@ -15,7 +15,7 @@ export async function GET(
       where: { id: params.id },
       include: {
         whatsapp_instances: true,
-        template: true,
+        message_templates: true,
         campaign_messages: {
           include: {
         contacts: true,

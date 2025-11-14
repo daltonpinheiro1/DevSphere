@@ -79,9 +79,10 @@ export async function POST(request: NextRequest) {
         variables: variables || extractedVariables,
         company_id,
         created_by,
-        mediaType,
-        mediaUrl,
-        mediaName,
+        media_type: mediaType,
+        media_url: mediaUrl,
+        media_name: mediaName,
+        updated_at: new Date(),
       },
     });
 

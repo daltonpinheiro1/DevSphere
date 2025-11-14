@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
 
     // Processar mensagem com auto-reply
     await autoReplyHandler.handleMessage({
-      instanceId,
+      instance_id: instanceId,
       from,
       message,
       message_id: messageId || `webhook-${Date.now()}`,

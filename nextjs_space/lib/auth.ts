@@ -17,7 +17,7 @@ export const authOptions: NextAuthOptions = {
         if (!credentials?.email || !credentials?.password) {
           throw new Error("Email e senha são obrigatórios");
         }
-        const user = await prisma.user.findUnique({ where: { email: credentials.email } });
+        const user = await prisma.users.findUnique({ where: { email: credentials.email } });
         if (!user || !user.is_active) throw new Error("Usuário não encontrado ou inativo");
         const isPasswordValid = await bcrypt.compare(credentials.password, user.password_hash);
         if (!isPasswordValid) throw new Error("Senha incorreta");

@@ -11,7 +11,7 @@ export async function GET() {
     const instances = await baileysService.getAllInstances();
 
     // Adicionar status de conexão em tempo real
-    const instancesWithStatus = instances.map((instance) => ({
+    const instancesWithStatus = instances.map((instance: any) => ({
       ...instance,
       isConnectedNow: baileysService.isInstanceConnected(instance.id),
     }));

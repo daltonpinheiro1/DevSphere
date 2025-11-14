@@ -19,7 +19,7 @@ class BaileysService {
   async initialize(): Promise<void> {
     try {
       // Buscar instâncias que estavam conectadas
-      const connectedInstances = await prisma.whatsAppInstance.findMany({
+      const connectedInstances = await prisma.whatsapp_instances.findMany({
         where: {
           status: { in: ['connected', 'connecting'] },
         },
@@ -57,7 +57,7 @@ class BaileysService {
     companyName?: string
   ): Promise<string> {
     try {
-      const instance = await prisma.whatsAppInstance.create({
+      const instance = await prisma.whatsapp_instances.create({
         data: {
           name,
           company_id,
@@ -124,7 +124,7 @@ class BaileysService {
         updateData.status = config.status;
       }
 
-      const instance = await prisma.whatsAppInstance.update({
+      const instance = await prisma.whatsapp_instances.update({
         where: { id: instanceId },
         data: updateData,
       });
@@ -142,7 +142,7 @@ class BaileysService {
   async connectInstance(instanceId: string): Promise<void> {
     try {
       // Verificar se instância existe no banco
-      const instance = await prisma.whatsAppInstance.findUnique({
+      const instance = await prisma.whatsapp_instances.findUnique({
         where: { id: instanceId },
       });
 
@@ -209,7 +209,7 @@ class BaileysService {
       await this.disconnectInstance(instanceId);
 
       // Excluir do banco
-      await prisma.whatsAppInstance.delete({
+      await prisma.whatsapp_instances.delete({
         where: { id: instanceId },
       });
     } catch (error) {
@@ -335,7 +335,7 @@ class BaileysService {
    * Obtém todas as instâncias
    */
   async getAllInstances() {
-    return await prisma.whatsAppInstance.findMany({
+    return await prisma.whatsapp_instances.findMany({
       orderBy: { created_at: 'desc' },
     });
   }
@@ -344,7 +344,7 @@ class BaileysService {
    * Obtém uma instância específica
    */
   async getInstance(instanceId: string) {
-    return await prisma.whatsAppInstance.findUnique({
+    return await prisma.whatsapp_instances.findUnique({
       where: { id: instanceId },
     });
   }

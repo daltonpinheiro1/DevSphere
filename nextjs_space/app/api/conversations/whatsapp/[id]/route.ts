@@ -22,7 +22,7 @@ export async function GET(
             email: true,
           },
         },
-        campaign_messages: {
+        whatsapp_conversation_messages: {
           orderBy: {
             timestamp: 'asc',
           },

@@ -97,16 +97,17 @@ export async function POST(request: NextRequest) {
       data: {
         id: uuidv4(),
         name,
-        instanceId,
-        templateId,
+        instance_id: instanceId,
+        template_id: templateId,
         status: scheduledAt ? 'scheduled' : 'draft',
         total_contacts: contacts.length,
         interval_min: intervalMin || 3,
         interval_max: intervalMax || 10,
-        risk_level: riskLevel || 'medium',
+        riskLevel: riskLevel || 'medium',
         scheduled_at: scheduledAt ? new Date(scheduledAt) : null,
         company_id,
         created_by,
+        updated_at: new Date(),
       },
     });
 
@@ -129,9 +130,11 @@ export async function POST(request: NextRequest) {
         },
         update: {},
         create: {
+          id: uuidv4(),
           phone_number: formattedNumber,
           name: contactData.name,
           company_id,
+          updated_at: new Date(),
         },
       });
 

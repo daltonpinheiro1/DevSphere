@@ -117,7 +117,7 @@ export class AutoReplyHandler {
     try {
       const activeLead = await prisma.tim_sales_leads.findFirst({
         where: {
-          instance_id: instanceId,
+          instance_id: instance_id,
           contact_phone: contactPhone,
           flow_stage: {
             notIn: ['completed', 'cancelled'],
@@ -240,7 +240,7 @@ Responda sempre em português brasileiro de forma natural e amigável. Mantenha 
 
       // Buscar contexto da conversa no cache
       const conversationContext = await conversationCache.buildContextForAI(
-        instanceId,
+        instance_id,
         contactPhone
       );
 
