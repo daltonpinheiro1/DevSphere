@@ -20,12 +20,27 @@ export async function GET(
       );
     }
 
+    // Converter snake_case para camelCase para o frontend
+    const instanceData = {
+      ...instance,
+      qrCode: instance.qr_code,  // Converter qr_code para qrCode
+      phoneNumber: instance.phone_number,  // Converter phone_number para phoneNumber
+      companyName: instance.company_name,  // Converter company_name para companyName
+      chatbotId: instance.chatbot_id,  // Converter chatbot_id para chatbotId
+      autoReply: instance.auto_reply,  // Converter auto_reply para autoReply
+      isActive: instance.is_active,  // Converter is_active para isActive
+      messagesPerBatch: instance.messages_per_batch,  // Converter messages_per_batch para messagesPerBatch
+      currentMessageCount: instance.current_message_count,  // Converter current_message_count para currentMessageCount
+      proxyUrl: instance.proxy_url,  // Converter proxy_url para proxyUrl
+      lastDnsRotation: instance.last_dns_rotation,  // Converter last_dns_rotation para lastDnsRotation
+      createdAt: instance.created_at,  // Converter created_at para createdAt
+      updatedAt: instance.updated_at,  // Converter updated_at para updatedAt
+      isConnectedNow: baileysService.isInstanceConnected(params.id),
+    };
+
     return NextResponse.json({
       success: true,
-      whatsapp_instances: {
-        ...instance,
-        isConnectedNow: baileysService.isInstanceConnected(params.id),
-      },
+      instance: instanceData,
     });
   } catch (error) {
     console.error('Erro ao buscar instância:', error);
