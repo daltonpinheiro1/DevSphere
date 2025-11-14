@@ -1,5 +1,6 @@
 
 import { PrismaClient } from '@prisma/client';
+import { v4 as uuidv4 } from 'uuid';
 import 'dotenv/config';
 
 const prisma = new PrismaClient();
@@ -75,6 +76,7 @@ Atendemos em todo o Brasil com instalação em até 48 horas.
 
 Responda sempre em português brasileiro de forma natural e amigável. Mantenha respostas concisas (máximo 3 parágrafos).`,
       is_active: true,
+      updated_at: new Date(),
     },
   });
 

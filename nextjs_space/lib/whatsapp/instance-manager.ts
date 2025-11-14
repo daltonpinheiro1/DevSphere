@@ -28,11 +28,11 @@ export class WhatsAppInstanceManager {
   private currentProxy: ProxyConfig | null = null;
 
   constructor(instanceId: string) {
-    this.instance_id = instance_id;
+    this.instance_id = instanceId;
     this.sessionPath = path.join(
       process.cwd(),
       'whatsapp_sessions',
-      instance_id
+      instanceId
     );
   }
 
@@ -388,9 +388,10 @@ export class WhatsAppInstanceManager {
       // Salvar mensagem no banco
       await prisma.whatsapp_messages.create({
         data: {
+          id: uuidv4(),
           instance_id: this.instance_id,
-          remoteJid,
-          messageId,
+          remote_jid: remoteJid,
+          message_id: messageId,
           from_me: false,
           content: messageContent,
           message_type: 'text',
@@ -452,6 +453,7 @@ export class WhatsAppInstanceManager {
       // Salvar mensagem enviada no banco
       await prisma.whatsapp_messages.create({
         data: {
+          id: uuidv4(),
           instance_id: this.instance_id,
           remote_jid: jid,
           message_id: `sent-${Date.now()}`,

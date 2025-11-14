@@ -135,6 +135,7 @@ class ProxyPool {
       // Salvar no banco
       const dbProxy = await prisma.proxy_servers.create({
         data: {
+          id: uuidv4(),
           url: proxyUrl,
           protocol: config.protocol,
           host: config.host,
@@ -142,7 +143,8 @@ class ProxyPool {
           username: config.username,
           password: config.password,
           country,
-          status: 'testing'
+          status: 'testing',
+          updated_at: new Date()
         }
       });
 
@@ -216,7 +218,7 @@ class ProxyPool {
     console.log(`❌ [ProxyPool] Marcando proxy ${proxy.country} como falho: ${reason}`);
 
     // Reduz taxa de sucesso drasticamente
-    const newSuccessRate = Math.max(0, (proxy.success_rate || 50) - 30);
+    const newSuccessRate = Math.max(0, (proxy.successRate || 50) - 30);
     
     // Se taxa cair abaixo de 20%, marca como inativo
     const newStatus = newSuccessRate < 20 ? 'inactive' : 'active';
@@ -226,15 +228,16 @@ class ProxyPool {
         where: { id: proxyId },
         data: {
           status: newStatus,
-          successRate: newSuccessRate,
-          lastChecked: new Date()
+          success_rate: newSuccessRate,
+          last_checked: new Date(),
+          updated_at: new Date()
         }
       });
 
       // Atualiza cache local
       proxy.status = newStatus;
-      proxy.success_rate = newSuccessRate;
-      proxy.last_checked = new Date();
+      proxy.successRate = newSuccessRate;
+      proxy.lastChecked = new Date();
 
       console.log(`📊 [ProxyPool] Proxy ${proxy.country}: taxa de sucesso ${newSuccessRate}%, status: ${newStatus}`);
     } catch (error) {
@@ -252,22 +255,23 @@ class ProxyPool {
     console.log(`✅ [ProxyPool] Proxy ${proxy.country} funcionou com sucesso`);
 
     // Aumenta taxa de sucesso
-    const newSuccessRate = Math.min(100, (proxy.success_rate || 50) + 10);
+    const newSuccessRate = Math.min(100, (proxy.successRate || 50) + 10);
 
     try {
       await prisma.proxy_servers.update({
         where: { id: proxyId },
         data: {
           status: 'active',
-          successRate: newSuccessRate,
-          lastChecked: new Date()
+          success_rate: newSuccessRate,
+          last_checked: new Date(),
+          updated_at: new Date()
         }
       });
 
       // Atualiza cache local
       proxy.status = 'active';
-      proxy.success_rate = newSuccessRate;
-      proxy.last_checked = new Date();
+      proxy.successRate = newSuccessRate;
+      proxy.lastChecked = new Date();
     } catch (error) {
       console.error(`❌ [ProxyPool] Erro ao atualizar status do proxy:`, error);
     }
@@ -337,16 +341,17 @@ class ProxyPool {
         where: { id: proxy.id },
         data: {
           status: isHealthy ? 'active' : 'inactive',
-          lastChecked: new Date(),
-          responseTime: isHealthy ? responseTime : null,
-          successRate: isHealthy ? (proxy.success_rate || 0) + 10 : Math.max(0, (proxy.success_rate || 100) - 20)
+          last_checked: new Date(),
+          response_time: isHealthy ? responseTime : null,
+          success_rate: isHealthy ? (proxy.successRate || 0) + 10 : Math.max(0, (proxy.successRate || 100) - 20),
+          updated_at: new Date()
         }
       });
 
       // Atualiza cache local
       proxy.status = isHealthy ? 'active' : 'inactive';
-      proxy.last_checked = new Date();
-      proxy.response_time = responseTime;
+      proxy.lastChecked = new Date();
+      proxy.responseTime = responseTime;
 
       console.log(`${isHealthy ? '✅' : '❌'} [ProxyPool] Proxy ${proxy.host}: ${isHealthy ? 'OK' : 'FALHOU'} (${responseTime}ms)`);
 
@@ -358,7 +363,11 @@ class ProxyPool {
       if (proxy.id) {
         await prisma.proxy_servers.update({
           where: { id: proxy.id },
-          data: { status: 'inactive', lastChecked: new Date() }
+          data: { 
+            status: 'inactive', 
+            last_checked: new Date(),
+            updated_at: new Date()
+          }
         });
       }
 
@@ -568,6 +577,7 @@ export async function setupOxylabsProxies() {
       // Adicionar proxy ao banco
       await prisma.proxy_servers.create({
         data: {
+          id: uuidv4(),
           url: proxyUrl,
           protocol: 'http',
           host: OXYLABS_HOST,
@@ -576,10 +586,11 @@ export async function setupOxylabsProxies() {
           password: OXYLABS_PASSWORD,
           country: country.name,
           status: 'testing',
-          responseTime: 0,
-          successRate: 100,
-          totalUses: 0,
-          totalFailures: 0,
+          response_time: 0,
+          success_rate: 100,
+          total_uses: 0,
+          total_failures: 0,
+          updated_at: new Date()
         }
       });
 

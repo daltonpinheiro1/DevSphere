@@ -6,6 +6,7 @@
 
 import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
+import { v4 as uuidv4 } from 'uuid';
 
 const prisma = new PrismaClient();
 
@@ -41,7 +42,7 @@ async function setupProxies() {
       const proxyUrl = `http://${username}:${OXYLABS_PASSWORD}@${OXYLABS_HOST}:${OXYLABS_PORT}`;
 
       // Verificar se já existe
-      const existing = await prisma.proxyServer.findFirst({
+      const existing = await prisma.proxy_servers.findFirst({
         where: {
           url: proxyUrl
         }
@@ -54,8 +55,9 @@ async function setupProxies() {
       }
 
       // Adicionar proxy ao banco
-      await prisma.proxyServer.create({
+      await prisma.proxy_servers.create({
         data: {
+          id: uuidv4(),
           url: proxyUrl,
           protocol: 'http',
           host: OXYLABS_HOST,
@@ -64,10 +66,11 @@ async function setupProxies() {
           password: OXYLABS_PASSWORD,
           country: country.name,
           status: 'testing',
-          responseTime: 0,
-          successRate: 100,
-          totalUses: 0,
-          totalFailures: 0,
+          response_time: 0,
+          success_rate: 100,
+          total_uses: 0,
+          total_failures: 0,
+          updated_at: new Date()
         }
       });
 

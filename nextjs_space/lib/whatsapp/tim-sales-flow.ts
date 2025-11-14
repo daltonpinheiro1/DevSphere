@@ -30,7 +30,7 @@ export class TIMSalesFlowManager {
   async getOrCreateLead(instanceId: string, contactPhone: string) {
     let lead = await prisma.tim_sales_leads.findFirst({
       where: {
-        instance_id: instance_id,
+        instance_id: instanceId,
         contact_phone: contactPhone,
         flow_stage: {
           not: 'completed',
@@ -44,8 +44,8 @@ export class TIMSalesFlowManager {
     if (!lead) {
       lead = await prisma.tim_sales_leads.create({
         data: {
-          id: `lead_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-          instance_id: instance_id,
+          id: uuidv4(),
+          instance_id: instanceId,
           contact_phone: contactPhone,
           flow_stage: 'initial',
           viability_checked: false,

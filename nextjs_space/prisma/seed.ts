@@ -1,26 +1,33 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { v4 as uuidv4 } from "uuid";
 
 const prisma = new PrismaClient();
 
 async function main() {
   const passwordHash = await bcrypt.hash("admin123", 10);
   
-  const admin = await prisma.user.upsert({
+  const admin = await prisma.users.upsert({
     where: { email: "admin@centerai.com" },
     update: {},
     create: {
+      id: uuidv4(),
       name: "Admin",
       email: "admin@centerai.com",
-      passwordHash,
+      password_hash: passwordHash,
       role: "ADMIN",
+      updated_at: new Date()
     },
   });
 
   await prisma.settings.upsert({
-    where: { userId: admin.id },
+    where: { user_id: admin.id },
     update: {},
-    create: { userId: admin.id },
+    create: { 
+      id: uuidv4(),
+      user_id: admin.id,
+      updated_at: new Date()
+    },
   });
 
   console.log("Seed completed:", admin);
