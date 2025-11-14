@@ -16,7 +16,7 @@ export async function initializeWhatsAppSystem() {
     const instances = await baileysService.getAllInstances();
 
     for (const instance of instances) {
-      if (instance.autoReply) {
+      if (instance.auto_reply) {
         baileysService.registerMessageHandler(
           instance.id,
           (message) => autoReplyHandler.handleMessage(message)

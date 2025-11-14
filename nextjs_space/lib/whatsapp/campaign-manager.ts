@@ -20,14 +20,14 @@ class CampaignManager {
       }
 
       // Buscar campanha
-      const campaign = await prisma.campaign.findUnique({
+      const campaign = await prisma.campaigns.findUnique({
         where: { id: campaignId },
         include: {
-          instance: true,
-          template: true,
-          messages: {
+          whatsapp_instances: true,
+          message_templates: true,
+          campaign_messages: {
             where: { status: 'pending' },
-            include: { contact: true },
+            include: { contacts: true },
           },
         },
       });
@@ -49,11 +49,11 @@ class CampaignManager {
       this.runningCampaigns.add(campaignId);
 
       // Atualizar status
-      await prisma.campaign.update({
+      await prisma.campaigns.update({
         where: { id: campaignId },
         data: {
           status: 'running',
-          startedAt: new Date(),
+          started_at: new Date(),
         },
       });
 
@@ -72,14 +72,14 @@ class CampaignManager {
    */
   private async executeCampaign(campaignId: string): Promise<void> {
     try {
-      const campaign = await prisma.campaign.findUnique({
+      const campaign = await prisma.campaigns.findUnique({
         where: { id: campaignId },
         include: {
-          instance: true,
-          template: true,
-          messages: {
+          whatsapp_instances: true,
+          message_templates: true,
+          campaign_messages: {
             where: { status: 'pending' },
-            include: { contact: true },
+            include: { contacts: true },
           },
         },
       });
@@ -88,12 +88,12 @@ class CampaignManager {
         throw new Error('Campanha não encontrada');
       }
 
-      const pendingMessages = campaign.messages;
+      const pendingMessages = campaign.campaign_messages;
 
       for (const campaignMessage of pendingMessages) {
         try {
           // Verificar se campanha foi pausada/cancelada
-          const currentCampaign = await prisma.campaign.findUnique({
+          const currentCampaign = await prisma.campaigns.findUnique({
             where: { id: campaignId },
             select: { status: true },
           });
@@ -108,58 +108,58 @@ class CampaignManager {
 
           // Gerar URL assinada se houver mídia
           let mediaUrl = undefined;
-          if (campaign.template?.media_url) {
-            mediaUrl = await downloadFile(campaign.template.media_url);
+          if ((campaign as any).message_templates?.media_url) {
+            mediaUrl = await downloadFile((campaign as any).message_templates.media_url);
           }
 
           // Enviar mensagem (com mídia se disponível)
           const success = await baileysService.sendMessage({
             instance_id: campaign.instance_id,
-            to: campaignMessage.contact.phone_number,
+            to: campaignMessage.contacts.phone_number,
             message: campaignMessage.message_content,
-            media_url: mediaUrl,
+            mediaUrl: mediaUrl,
           });
 
           if (success) {
             // Atualizar status da mensagem
-            await prisma.campaignMessage.update({
+            await prisma.campaign_messages.update({
               where: { id: campaignMessage.id },
               data: {
                 status: 'sent',
-                sentAt: new Date(),
+                sent_at: new Date(),
               },
             });
 
             // Atualizar contador da campanha
-            await prisma.campaign.update({
+            await prisma.campaigns.update({
               where: { id: campaignId },
               data: {
-                sentCount: { increment: 1 },
+                sent_count: { increment: 1 },
               },
             });
           } else {
             // Marcar como falha
-            await prisma.campaignMessage.update({
+            await prisma.campaign_messages.update({
               where: { id: campaignMessage.id },
               data: {
                 status: 'failed',
-                errorMessage: 'Erro ao enviar mensagem',
+                error_message: 'Erro ao enviar mensagem',
               },
             });
 
-            await prisma.campaign.update({
+            await prisma.campaigns.update({
               where: { id: campaignId },
               data: {
-                failedCount: { increment: 1 },
+                failed_count: { increment: 1 },
               },
             });
           }
 
           // Intervalo entre envios
           const delay = this.getRandomDelay(
-            campaign.intervalMin,
-            campaign.intervalMax,
-            campaign.risk_level
+            campaign.interval_min,
+            campaign.interval_max,
+            campaign.riskLevel
           );
           await this.sleep(delay * 1000);
         } catch (error) {
@@ -169,29 +169,29 @@ class CampaignManager {
           );
 
           // Marcar como falha
-          await prisma.campaignMessage.update({
+          await prisma.campaign_messages.update({
             where: { id: campaignMessage.id },
             data: {
               status: 'failed',
-              errorMessage: String(error),
+              error_message: String(error),
             },
           });
 
-          await prisma.campaign.update({
+          await prisma.campaigns.update({
             where: { id: campaignId },
             data: {
-              failedCount: { increment: 1 },
+              failed_count: { increment: 1 },
             },
           });
         }
       }
 
       // Finalizar campanha
-      await prisma.campaign.update({
+      await prisma.campaigns.update({
         where: { id: campaignId },
         data: {
           status: 'completed',
-          completedAt: new Date(),
+          completed_at: new Date(),
         },
       });
 
@@ -201,7 +201,7 @@ class CampaignManager {
       console.error('Erro ao executar campanha:', error);
 
       // Marcar campanha com erro
-      await prisma.campaign.update({
+      await prisma.campaigns.update({
         where: { id: campaignId },
         data: { status: 'cancelled' },
       });
@@ -215,7 +215,7 @@ class CampaignManager {
    * Pausa uma campanha
    */
   async pauseCampaign(campaignId: string): Promise<void> {
-    await prisma.campaign.update({
+    await prisma.campaigns.update({
       where: { id: campaignId },
       data: { status: 'paused' },
     });
@@ -225,7 +225,7 @@ class CampaignManager {
    * Cancela uma campanha
    */
   async cancelCampaign(campaignId: string): Promise<void> {
-    await prisma.campaign.update({
+    await prisma.campaigns.update({
       where: { id: campaignId },
       data: { status: 'cancelled' },
     });
@@ -245,7 +245,7 @@ class CampaignManager {
     let adjustedMin = min;
     let adjustedMax = max;
 
-    switch (riskLevel) {
+    switch (risk_level) {
       case 'low':
         adjustedMin = Math.max(min, 10); // Mínimo 10s
         adjustedMax = Math.max(max, 30); // Mínimo 30s

@@ -79,9 +79,9 @@ class ProxyPool {
           config.id = proxy.id;
           config.country = proxy.country || undefined;
           config.status = proxy.status as 'active' | 'inactive' | 'testing';
-          config.lastChecked = proxy.lastChecked || undefined;
-          config.responseTime = proxy.responseTime || undefined;
-          config.successRate = proxy.successRate || undefined;
+          config.lastChecked = proxy.last_checked || undefined;
+          config.responseTime = proxy.response_time || undefined;
+          config.successRate = proxy.success_rate || undefined;
           
           this.proxies.set(proxy.id, config);
         }
@@ -216,7 +216,7 @@ class ProxyPool {
     console.log(`❌ [ProxyPool] Marcando proxy ${proxy.country} como falho: ${reason}`);
 
     // Reduz taxa de sucesso drasticamente
-    const newSuccessRate = Math.max(0, (proxy.successRate || 50) - 30);
+    const newSuccessRate = Math.max(0, (proxy.success_rate || 50) - 30);
     
     // Se taxa cair abaixo de 20%, marca como inativo
     const newStatus = newSuccessRate < 20 ? 'inactive' : 'active';
@@ -233,8 +233,8 @@ class ProxyPool {
 
       // Atualiza cache local
       proxy.status = newStatus;
-      proxy.successRate = newSuccessRate;
-      proxy.lastChecked = new Date();
+      proxy.success_rate = newSuccessRate;
+      proxy.last_checked = new Date();
 
       console.log(`📊 [ProxyPool] Proxy ${proxy.country}: taxa de sucesso ${newSuccessRate}%, status: ${newStatus}`);
     } catch (error) {
@@ -252,7 +252,7 @@ class ProxyPool {
     console.log(`✅ [ProxyPool] Proxy ${proxy.country} funcionou com sucesso`);
 
     // Aumenta taxa de sucesso
-    const newSuccessRate = Math.min(100, (proxy.successRate || 50) + 10);
+    const newSuccessRate = Math.min(100, (proxy.success_rate || 50) + 10);
 
     try {
       await prisma.proxy_servers.update({
@@ -266,8 +266,8 @@ class ProxyPool {
 
       // Atualiza cache local
       proxy.status = 'active';
-      proxy.successRate = newSuccessRate;
-      proxy.lastChecked = new Date();
+      proxy.success_rate = newSuccessRate;
+      proxy.last_checked = new Date();
     } catch (error) {
       console.error(`❌ [ProxyPool] Erro ao atualizar status do proxy:`, error);
     }
@@ -339,14 +339,14 @@ class ProxyPool {
           status: isHealthy ? 'active' : 'inactive',
           lastChecked: new Date(),
           responseTime: isHealthy ? responseTime : null,
-          successRate: isHealthy ? (proxy.successRate || 0) + 10 : Math.max(0, (proxy.successRate || 100) - 20)
+          successRate: isHealthy ? (proxy.success_rate || 0) + 10 : Math.max(0, (proxy.success_rate || 100) - 20)
         }
       });
 
       // Atualiza cache local
       proxy.status = isHealthy ? 'active' : 'inactive';
-      proxy.lastChecked = new Date();
-      proxy.responseTime = responseTime;
+      proxy.last_checked = new Date();
+      proxy.response_time = responseTime;
 
       console.log(`${isHealthy ? '✅' : '❌'} [ProxyPool] Proxy ${proxy.host}: ${isHealthy ? 'OK' : 'FALHOU'} (${responseTime}ms)`);
 

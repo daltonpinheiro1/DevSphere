@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const {
       name,
-      instanceId,
+      instance_id,
       templateId,
       contacts,
       intervalMin,
@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
       created_by,
     } = body;
 
-    if (!name || !instanceId || !contacts || contacts.length === 0) {
+    if (!name || !instance_id || !contacts || contacts.length === 0) {
       return NextResponse.json(
         {
           success: false,
@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
       data: {
         id: uuidv4(),
         name,
-        instance_id: instanceId,
+        instance_id: instance_id,
         template_id: templateId,
         status: scheduledAt ? 'scheduled' : 'draft',
         total_contacts: contacts.length,
@@ -152,9 +152,10 @@ export async function POST(request: NextRequest) {
       }
 
       campaignMessages.push({
+        id: uuidv4(),
         campaign_id: campaign.id,
         contact_id: contact.id,
-        messageContent,
+        message_content: messageContent,
         status: 'pending',
       });
     }

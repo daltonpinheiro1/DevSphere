@@ -1,6 +1,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { v4 as uuidv4 } from 'uuid';
 
 /**
  * GET /api/whatsapp/contacts
@@ -105,10 +106,12 @@ export async function POST(request: NextRequest) {
         metadata: metadata || undefined,
       },
       create: {
+        id: uuidv4(),
         phone_number: formattedNumber,
         name,
         company_id,
         metadata: metadata || undefined,
+        updated_at: new Date(),
       },
     });
 

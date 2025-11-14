@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const instanceId = await baileysService.createInstance(
+    const instance_id = await baileysService.createInstance(
       name,
       company_id,
       chatbotId,
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
       companyName
     );
 
-    const instance = await baileysService.getInstance(instanceId);
+    const instance = await baileysService.getInstance(instance_id);
 
     return NextResponse.json({
       success: true,

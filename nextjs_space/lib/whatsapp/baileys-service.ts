@@ -59,15 +59,17 @@ class BaileysService {
     try {
       const instance = await prisma.whatsapp_instances.create({
         data: {
+          id: uuidv4(),
           name,
           company_id,
-          companyName,
-          chatbotId,
+          company_name: companyName,
+          chatbot_id: chatbotId,
           status: 'disconnected',
-          autoReply: true,
+          auto_reply: true,
           is_active: true,
-          messagesPerBatch: messagesPerBatch || 50,
-          proxyUrl: proxyUrl || null,
+          messages_per_batch: messagesPerBatch || 50,
+          proxy_url: proxyUrl || null,
+          updated_at: new Date(),
         },
       });
 
@@ -125,7 +127,7 @@ class BaileysService {
       }
 
       const instance = await prisma.whatsapp_instances.update({
-        where: { id: instanceId },
+        where: { id: instance_id },
         data: updateData,
       });
 
@@ -139,11 +141,11 @@ class BaileysService {
   /**
    * Conecta uma instância existente
    */
-  async connectInstance(instanceId: string): Promise<void> {
+  async connectInstance(instance_id: string): Promise<void> {
     try {
       // Verificar se instância existe no banco
       const instance = await prisma.whatsapp_instances.findUnique({
-        where: { id: instanceId },
+        where: { id: instance_id },
       });
 
       if (!instance) {
@@ -151,21 +153,21 @@ class BaileysService {
       }
 
       // Verificar se já está conectada
-      if (this.instances.has(instanceId)) {
-        console.log(`Instância ${instanceId} já está inicializada`);
+      if (this.instances.has(instance_id)) {
+        console.log(`Instância ${instance_id} já está inicializada`);
         return;
       }
 
       // Criar gerenciador da instância
-      const manager = new WhatsAppInstanceManager(instanceId);
+      const manager = new WhatsAppInstanceManager(instance_id);
 
       // Callbacks para eventos
       const onQrCode = (qr: string) => {
-        console.log(`QR Code atualizado para instância ${instanceId}`);
+        console.log(`QR Code atualizado para instância ${instance_id}`);
       };
 
       const onStatus = (status: string) => {
-        console.log(`Status atualizado para instância ${instanceId}: ${status}`);
+        console.log(`Status atualizado para instância ${instance_id}: ${status}`);
       };
 
       const onMessage = (message: WebhookMessage) => {
@@ -176,9 +178,9 @@ class BaileysService {
       await manager.connect(onQrCode, onStatus, onMessage);
 
       // Armazenar instância
-      this.instances.set(instanceId, manager);
+      this.instances.set(instance_id, manager);
     } catch (error) {
-      console.error(`Erro ao conectar instância ${instanceId}:`, error);
+      console.error(`Erro ao conectar instância ${instance_id}:`, error);
       throw error;
     }
   }
@@ -186,16 +188,16 @@ class BaileysService {
   /**
    * Desconecta uma instância
    */
-  async disconnectInstance(instanceId: string): Promise<void> {
+  async disconnectInstance(instance_id: string): Promise<void> {
     try {
-      const manager = this.instances.get(instanceId);
+      const manager = this.instances.get(instance_id);
 
       if (manager) {
         await manager.disconnect();
-        this.instances.delete(instanceId);
+        this.instances.delete(instance_id);
       }
     } catch (error) {
-      console.error(`Erro ao desconectar instância ${instanceId}:`, error);
+      console.error(`Erro ao desconectar instância ${instance_id}:`, error);
       throw error;
     }
   }
@@ -203,17 +205,17 @@ class BaileysService {
   /**
    * Exclui uma instância
    */
-  async deleteInstance(instanceId: string): Promise<void> {
+  async deleteInstance(instance_id: string): Promise<void> {
     try {
       // Desconectar primeiro
-      await this.disconnectInstance(instanceId);
+      await this.disconnectInstance(instance_id);
 
       // Excluir do banco
       await prisma.whatsapp_instances.delete({
-        where: { id: instanceId },
+        where: { id: instance_id },
       });
     } catch (error) {
-      console.error(`Erro ao excluir instância ${instanceId}:`, error);
+      console.error(`Erro ao excluir instância ${instance_id}:`, error);
       throw error;
     }
   }
@@ -234,7 +236,7 @@ class BaileysService {
         await this.sleep(options.delayMs);
       }
 
-      return await manager.sendMessage(options.to, options.message, options.media_url);
+      return await manager.sendMessage(options.to, options.message, options.mediaUrl);
     } catch (error) {
       console.error('Erro ao enviar mensagem:', error);
       return false;
@@ -246,10 +248,10 @@ class BaileysService {
    */
   async sendBulkMessages(options: BulkSendOptions): Promise<void> {
     try {
-      const { instanceId, contacts, intervalMin, intervalMax, onProgress } =
+      const { instance_id, contacts, interval_min, interval_max, onProgress } =
         options;
 
-      const manager = this.instances.get(instanceId);
+      const manager = this.instances.get(instance_id);
 
       if (!manager || !manager.isConnected()) {
         throw new Error('Instância não conectada');
@@ -265,7 +267,7 @@ class BaileysService {
           const success = await manager.sendMessage(
             contact.phone_number,
             contact.message,
-            contact.media_url
+            contact.mediaUrl
           );
 
           if (success) {
@@ -282,7 +284,7 @@ class BaileysService {
 
           // Aguardar intervalo aleatório entre envios
           if (sent + failed < total) {
-            const delay = this.getRandomInterval(intervalMin, intervalMax);
+            const delay = this.getRandomInterval(interval_min, interval_max);
             await this.sleep(delay * 1000);
           }
         } catch (error) {
@@ -313,7 +315,7 @@ class BaileysService {
     instance_id: string,
     handler: (msg: WebhookMessage) => void
   ): void {
-    this.messageHandlers.set(instanceId, handler);
+    this.messageHandlers.set(instance_id, handler);
   }
 
   /**
@@ -343,25 +345,25 @@ class BaileysService {
   /**
    * Obtém uma instância específica
    */
-  async getInstance(instanceId: string) {
+  async getInstance(instance_id: string) {
     return await prisma.whatsapp_instances.findUnique({
-      where: { id: instanceId },
+      where: { id: instance_id },
     });
   }
 
   /**
    * Verifica se uma instância está conectada
    */
-  isInstanceConnected(instanceId: string): boolean {
-    const manager = this.instances.get(instanceId);
+  isInstanceConnected(instance_id: string): boolean {
+    const manager = this.instances.get(instance_id);
     return manager ? manager.isConnected() : false;
   }
 
   /**
    * Obtém gerenciador de uma instância (uso interno)
    */
-  getInstanceManager(instanceId: string): WhatsAppInstanceManager | undefined {
-    return this.instances.get(instanceId);
+  getInstanceManager(instance_id: string): WhatsAppInstanceManager | undefined {
+    return this.instances.get(instance_id);
   }
 
   /**

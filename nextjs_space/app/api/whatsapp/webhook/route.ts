@@ -10,9 +10,9 @@ import { autoReplyHandler } from '@/lib/whatsapp/auto-reply-handler';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { instanceId, from, message, messageId, timestamp } = body;
+    const { instance_id, from, message, messageId, timestamp } = body;
 
-    if (!instanceId || !from || !message) {
+    if (!instance_id || !from || !message) {
       return NextResponse.json(
         { success: false, error: 'Dados incompletos' },
         { status: 400 }
@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
 
     // Processar mensagem com auto-reply
     await autoReplyHandler.handleMessage({
-      instance_id: instanceId,
+      instance_id: instance_id,
       from,
       message,
       message_id: messageId || `webhook-${Date.now()}`,

@@ -28,11 +28,11 @@ export class WhatsAppInstanceManager {
   private currentProxy: ProxyConfig | null = null;
 
   constructor(instanceId: string) {
-    this.instance_id = instanceId;
+    this.instance_id = instance_id;
     this.sessionPath = path.join(
       process.cwd(),
       'whatsapp_sessions',
-      instanceId
+      instance_id
     );
   }
 
@@ -137,9 +137,9 @@ export class WhatsAppInstanceManager {
       
       // Limpar QR code antigo no banco de dados
       console.log(`🧹 Limpando QR code antigo da instância ${this.instance_id}...`);
-      await prisma.whatsAppInstance.update({
+      await prisma.whatsapp_instances.update({
         where: { id: this.instance_id },
-        data: { qrCode: null },
+        data: { qr_code: null },
       });
 
       // Criar diretório de sessão se não existir
@@ -386,14 +386,14 @@ export class WhatsAppInstanceManager {
       );
 
       // Salvar mensagem no banco
-      await prisma.whatsAppMessage.create({
+      await prisma.whatsapp_messages.create({
         data: {
           instance_id: this.instance_id,
           remoteJid,
           messageId,
-          fromMe: false,
+          from_me: false,
           content: messageContent,
-          messageType: 'text',
+          message_type: 'text',
           timestamp: new Date(msg.messageTimestamp as number * 1000),
         },
       });
@@ -423,7 +423,7 @@ export class WhatsAppInstanceManager {
       }
 
       // Obter configurações da instância para rate limiting
-      const instance = await prisma.whatsAppInstance.findUnique({
+      const instance = await prisma.whatsapp_instances.findUnique({
         where: { id: this.instance_id },
       });
 
@@ -432,7 +432,7 @@ export class WhatsAppInstanceManager {
       }
 
       // Verificar se precisa rotacionar DNS
-      if (instance.currentMessageCount >= instance.messagesPerBatch) {
+      if (instance.current_message_count >= instance.messages_per_batch) {
         await this.rotateDNS(instance);
       }
 
@@ -450,29 +450,29 @@ export class WhatsAppInstanceManager {
       }
 
       // Salvar mensagem enviada no banco
-      await prisma.whatsAppMessage.create({
+      await prisma.whatsapp_messages.create({
         data: {
           instance_id: this.instance_id,
-          remoteJid: jid,
+          remote_jid: jid,
           message_id: `sent-${Date.now()}`,
-          fromMe: true,
+          from_me: true,
           content: message,
-          messageType: mediaUrl ? 'image' : 'text',
+          message_type: mediaUrl ? 'image' : 'text',
           status: 'sent',
         },
       });
 
       // Incrementar contador de mensagens
-      await prisma.whatsAppInstance.update({
+      await prisma.whatsapp_instances.update({
         where: { id: this.instance_id },
         data: {
-          currentMessageCount: {
+          current_message_count: {
             increment: 1,
           },
         },
       });
 
-      console.log(`Mensagem enviada para ${to} (${instance.currentMessageCount + 1}/${instance.messagesPerBatch})`);
+      console.log(`Mensagem enviada para ${to} (${instance.current_message_count + 1}/${instance.messages_per_batch})`);
       return true;
     } catch (error) {
       console.error(`Erro ao enviar mensagem para ${to}:`, error);
@@ -494,11 +494,11 @@ export class WhatsAppInstanceManager {
       }
 
       // Resetar contador e atualizar timestamp
-      await prisma.whatsAppInstance.update({
+      await prisma.whatsapp_instances.update({
         where: { id: this.instance_id },
         data: {
-          currentMessageCount: 0,
-          lastDnsRotation: new Date(),
+          current_message_count: 0,
+          last_dns_rotation: new Date(),
         },
       });
 
@@ -547,11 +547,11 @@ export class WhatsAppInstanceManager {
       }
 
       // Limpar QR code e session data do banco
-      await prisma.whatsAppInstance.update({
+      await prisma.whatsapp_instances.update({
         where: { id: this.instance_id },
         data: {
-          qrCode: null,
-          sessionData: null,
+          qr_code: null,
+          session_data: null,
           phone_number: null,
         },
       });
@@ -575,7 +575,7 @@ export class WhatsAppInstanceManager {
         data.lastConnectedAt = new Date();
       }
 
-      await prisma.whatsAppInstance.update({
+      await prisma.whatsapp_instances.update({
         where: { id: this.instance_id },
         data,
       });
@@ -596,9 +596,9 @@ export class WhatsAppInstanceManager {
       const qrDataUrl = await QRCode.toDataURL(qr);
       console.log(`✅ QR Code convertido! Data URL length: ${qrDataUrl.length} chars`);
       
-      await prisma.whatsAppInstance.update({
+      await prisma.whatsapp_instances.update({
         where: { id: this.instance_id },
-        data: { qrCode: qrDataUrl },
+        data: { qr_code: qrDataUrl },
       });
       
       console.log(`💾 QR Code salvo no banco de dados para instância ${this.instance_id}`);

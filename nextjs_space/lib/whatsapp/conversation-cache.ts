@@ -25,7 +25,7 @@ export class ConversationCache {
     instance_id: string,
     contactPhone: string
   ): Promise<ConversationContext | null> {
-    const key = this.getCacheKey(instanceId, contactPhone);
+    const key = this.getCacheKey(instance_id, contactPhone);
     const cached = await getCache<ConversationContext>(key);
 
     if (cached) {
@@ -38,7 +38,7 @@ export class ConversationCache {
       }
 
       // Se passou de 6 horas, limpa o cache
-      await this.clearConversation(instanceId, contactPhone);
+      await this.clearConversation(instance_id, contactPhone);
       return null;
     }
 
@@ -51,12 +51,12 @@ export class ConversationCache {
     role: 'user' | 'assistant',
     content: string
   ): Promise<void> {
-    const key = this.getCacheKey(instanceId, contactPhone);
-    let context = await this.getConversation(instanceId, contactPhone);
+    const key = this.getCacheKey(instance_id, contactPhone);
+    let context = await this.getConversation(instance_id, contactPhone);
 
     if (!context) {
       context = {
-        instanceId,
+        instance_id,
         contactPhone,
         messages: [],
         lastUpdated: Date.now(),
@@ -84,7 +84,7 @@ export class ConversationCache {
     contactPhone: string,
     limit: number = 10
   ): Promise<ConversationMessage[]> {
-    const context = await this.getConversation(instanceId, contactPhone);
+    const context = await this.getConversation(instance_id, contactPhone);
     if (!context) {
       return [];
     }
@@ -96,7 +96,7 @@ export class ConversationCache {
     instance_id: string,
     contactPhone: string
   ): Promise<void> {
-    const key = this.getCacheKey(instanceId, contactPhone);
+    const key = this.getCacheKey(instance_id, contactPhone);
     await deleteCache(key);
   }
 
@@ -104,7 +104,7 @@ export class ConversationCache {
     instance_id: string,
     contactPhone: string
   ): Promise<string> {
-    const messages = await this.getRecentMessages(instanceId, contactPhone, 10);
+    const messages = await this.getRecentMessages(instance_id, contactPhone, 10);
 
     if (messages.length === 0) {
       return '';

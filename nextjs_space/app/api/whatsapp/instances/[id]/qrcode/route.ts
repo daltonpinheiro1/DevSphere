@@ -20,7 +20,7 @@ export async function GET(
       );
     }
 
-    if (!instance.qrCode) {
+    if (!instance.qr_code) {
       return NextResponse.json(
         { success: false, error: 'QR Code não disponível' },
         { status: 404 }
@@ -29,7 +29,7 @@ export async function GET(
 
     return NextResponse.json({
       success: true,
-      qrCode: instance.qrCode,
+      qrCode: instance.qr_code,
       status: instance.status,
     });
   } catch (error) {

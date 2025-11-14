@@ -26,8 +26,8 @@ export interface BulkSendOptions {
     variables?: Record<string, string>;
     mediaUrl?: string;
   }>;
-  intervalMin: number; // segundos
-  intervalMax: number; // segundos
+  interval_min: number; // segundos
+  interval_max: number; // segundos
   onProgress?: (sent: number, total: number, status: string) => void;
 }
 

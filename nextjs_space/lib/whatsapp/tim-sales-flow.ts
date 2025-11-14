@@ -30,7 +30,7 @@ export class TIMSalesFlowManager {
   async getOrCreateLead(instanceId: string, contactPhone: string) {
     let lead = await prisma.tim_sales_leads.findFirst({
       where: {
-        instance_id: instanceId,
+        instance_id: instance_id,
         contact_phone: contactPhone,
         flow_stage: {
           not: 'completed',
@@ -45,7 +45,7 @@ export class TIMSalesFlowManager {
       lead = await prisma.tim_sales_leads.create({
         data: {
           id: `lead_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-          instance_id: instanceId,
+          instance_id: instance_id,
           contact_phone: contactPhone,
           flow_stage: 'initial',
           viability_checked: false,
@@ -65,11 +65,11 @@ export class TIMSalesFlowManager {
     contactPhone: string,
     message: string
   ): Promise<FlowResponse> {
-    const lead = await this.getOrCreateLead(instanceId, contactPhone);
+    const lead = await this.getOrCreateLead(instance_id, contactPhone);
 
     // Salva mensagem no cache de conversação
     await conversationCache.addMessage(
-      instanceId,
+      instance_id,
       contactPhone,
       'user',
       message

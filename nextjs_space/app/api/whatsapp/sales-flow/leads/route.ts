@@ -5,13 +5,13 @@ import { prisma } from '@/lib/db';
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
-    const instanceId = searchParams.get('instanceId');
+    const instance_id = searchParams.get('instance_id');
     const stage = searchParams.get('stage');
 
     const where: any = {};
 
-    if (instanceId) {
-      where.instance_id = instanceId;
+    if (instance_id) {
+      where.instance_id = instance_id;
     }
 
     if (stage) {

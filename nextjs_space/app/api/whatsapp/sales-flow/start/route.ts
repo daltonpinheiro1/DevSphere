@@ -6,28 +6,28 @@ import { baileysService } from '@/lib/whatsapp/baileys-service';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { instanceId, contactPhone } = body;
+    const { instance_id, contactPhone } = body;
 
-    if (!instanceId || !contactPhone) {
+    if (!instance_id || !contactPhone) {
       return NextResponse.json(
-        { error: 'instanceId e contactPhone são obrigatórios' },
+        { error: 'instance_id e contactPhone são obrigatórios' },
         { status: 400 }
       );
     }
 
     // Criar ou recuperar lead
-    const lead = await timSalesFlow.getOrCreateLead(instanceId, contactPhone);
+    const lead = await timSalesFlow.getOrCreateLead(instance_id, contactPhone);
 
     // Obter mensagem inicial do fluxo
     const flowResponse = await timSalesFlow.handleMessage(
-      instanceId,
+      instance_id,
       contactPhone,
       'iniciar'
     );
 
     // Enviar mensagem inicial
     await baileysService.sendMessage({
-      instanceId,
+      instance_id,
       to: contactPhone,
       message: flowResponse.message,
     });
